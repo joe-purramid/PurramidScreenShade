@@ -1,9 +1,9 @@
 // SharedPreferencesModule.kt
-package com.example.purramid.thepurramid.di
+package com.example.purramid.purramidscreenshade.di
 
 import android.content.Context
 import android.content.SharedPreferences
-import com.example.purramid.thepurramid.screen_mask.ScreenMaskService
+import com.example.purramid.purramidscreenshade.screen_mask.ScreenMaskService
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -17,14 +17,6 @@ object AppModule {
 
     @Provides
     @Singleton
-    @ClockPrefs
-    fun provideClockPreferences(@ApplicationContext context: Context): SharedPreferences {
-        // Assuming ClockOverlayService.PREFS_NAME_FOR_ACTIVITY exists
-        return context.getSharedPreferences(com.example.purramid.thepurramid.clock.ClockOverlayService.PREFS_NAME_FOR_ACTIVITY, Context.MODE_PRIVATE)
-    }
-
-    @Provides
-    @Singleton
     @ScreenMaskPrefs
     fun provideScreenMaskPreferences(@ApplicationContext context: Context): SharedPreferences {
         return context.getSharedPreferences(ScreenMaskService.PREFS_NAME_FOR_ACTIVITY, Context.MODE_PRIVATE)
@@ -34,22 +26,6 @@ object AppModule {
     @Singleton
     @SpotlightPrefs // Use the qualifier
     fun provideSpotlightPreferences(@ApplicationContext context: Context): SharedPreferences {
-        return context.getSharedPreferences(com.example.purramid.thepurramid.spotlight.SpotlightService.PREFS_NAME_FOR_ACTIVITY, Context.MODE_PRIVATE)
-    }
-
-    @Provides
-    @Singleton
-    @TimersPrefs
-    fun provideTimersPreferences(@ApplicationContext context: Context): SharedPreferences {
-         // Assuming TimersService.PREFS_NAME_FOR_ACTIVITY exists
-        return context.getSharedPreferences(com.example.purramid.thepurramid.timers.TimersService.PREFS_NAME_FOR_ACTIVITY, Context.MODE_PRIVATE)
-    }
-
-    @Provides
-    @Singleton
-    @TrafficLightPrefs
-    fun provideTrafficLightPreferences(@ApplicationContext context: Context): SharedPreferences {
-        // Assuming TrafficLightService.PREFS_NAME_FOR_ACTIVITY exists
-        return context.getSharedPreferences(com.example.purramid.thepurramid.traffic_light.TrafficLightService.PREFS_NAME_FOR_ACTIVITY, Context.MODE_PRIVATE)
+        return context.getSharedPreferences(com.example.purramid.purramidscreenshade.spotlight.SpotlightService.PREFS_NAME_FOR_ACTIVITY, Context.MODE_PRIVATE)
     }
 }

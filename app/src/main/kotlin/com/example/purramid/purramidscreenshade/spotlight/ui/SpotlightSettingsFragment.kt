@@ -1,5 +1,5 @@
 // SpotlightSettingsFragment.kt
-package com.example.purramid.thepurramid.spotlight.ui
+package com.example.purramid.purramidscreenshade.spotlight.ui
 
 import android.content.Context
 import android.content.Intent
@@ -10,10 +10,10 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
-import com.example.purramid.thepurramid.R
-import com.example.purramid.thepurramid.databinding.FragmentSpotlightSettingsBinding
-import com.example.purramid.thepurramid.spotlight.ACTION_ADD_NEW_SPOTLIGHT_INSTANCE
-import com.example.purramid.thepurramid.spotlight.SpotlightService
+import com.example.purramid.purramidscreenshade.R
+import com.example.purramid.purramidscreenshade.databinding.FragmentSpotlightSettingsBinding
+import com.example.purramid.purramidscreenshade.spotlight.ACTION_ADD_NEW_SPOTLIGHT_INSTANCE
+import com.example.purramid.purramidscreenshade.spotlight.SpotlightService
 import com.google.android.material.snackbar.Snackbar
 import dagger.hilt.android.AndroidEntryPoint
 

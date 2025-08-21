@@ -1,0 +1,33 @@
+# PurramidTime - About - App-Intent Development Specifications
+Purramid Time is a classroom management tool that displays three time-keeping app-intents. About (or About this Application) is a text-based citation page that provides license information, application details, and suggested best practices.
+
+## **Order of Presentation**
+About is the fourth and final PurramidTime app-intent
+
+## Technical Implementation Notes
+- Service/Activity type: Activity only (AboutActivity)
+- Free-form window support: Yes
+- Multi-instance support: No, one instance only
+- Window tracking: Not applicable
+- Shares single service: Not applicable
+- Requires permissions: None
+- Instance tracking: Not applicable
+- Window persistence: Not required
+- Key dependencies:
+  - ViewModel: None (static content only)
+  - Repository: None
+  - Database entities: None
+
+
+(1) This app-intent opens in a freeform window 386 px width by 500 px height 
+
+(2) Text wraps. There is no horizontal scroll bar.
+
+(3) It includes a close button in the top right corner.
+	(3.1) Default icon state uses ic_close.xml.
+	(3.2) Active state: Programmatically change fill colors per Button Implementation Guidelines.
+
+(4) ``CLOSE``
+	(4.1) When a user touches the Close button, its icon changes from (3.1) Default to (3.2) Active.
+	(4.2) The window closes.
+	(4.3) The About activity ends.

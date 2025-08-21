@@ -1,11 +1,11 @@
 // SpotlightMigrationHelper.kt
-package com.example.purramid.thepurramid.spotlight.util
+package com.example.purramid.purramidscreenshade.spotlight.util
 
 import android.util.Log
-import com.example.purramid.thepurramid.data.db.SpotlightDao
-import com.example.purramid.thepurramid.data.db.SpotlightInstanceEntity
-import com.example.purramid.thepurramid.data.db.SpotlightOpeningEntity
-import com.example.purramid.thepurramid.instance.InstanceManager
+import com.example.purramid.purramidscreenshade.data.db.SpotlightDao
+import com.example.purramid.purramidscreenshade.data.db.SpotlightInstanceEntity
+import com.example.purramid.purramidscreenshade.data.db.SpotlightOpeningEntity
+import com.example.purramid.purramidscreenshade.instance.InstanceManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import javax.inject.Inject

@@ -1,5 +1,5 @@
 // ViewExtensions.kt
-package com.example.purramid.thepurramid.util
+package com.example.purramid.purramidscreenshade.util
 
 import android.app.Activity
 import android.content.Context

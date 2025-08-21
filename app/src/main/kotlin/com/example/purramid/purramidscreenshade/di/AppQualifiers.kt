@@ -1,4 +1,4 @@
-package com.example.purramid.thepurramid.di
+package com.example.purramid.purramidscreenshade.di
 
 import javax.inject.Qualifier
 
@@ -9,20 +9,8 @@ annotation class IoDispatcher
 
 @Qualifier
 @Retention(AnnotationRetention.BINARY)
-annotation class ClockPrefs // For ClockService SharedPreferences
-
-@Qualifier
-@Retention(AnnotationRetention.BINARY)
 annotation class ScreenMaskPrefs
 
 @Qualifier
 @Retention(AnnotationRetention.BINARY)
 annotation class SpotlightPrefs // Assuming you'll need one for Spotlight too
-
-@Qualifier
-@Retention(AnnotationRetention.BINARY)
-annotation class TimersPrefs // For TimersService SharedPreferences
-
-@Qualifier
-@Retention(AnnotationRetention.BINARY)
-annotation class TrafficLightPrefs // For TrafficLightService SharedPreferences

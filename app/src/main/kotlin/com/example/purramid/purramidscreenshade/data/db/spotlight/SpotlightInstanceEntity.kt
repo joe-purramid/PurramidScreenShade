@@ -1,5 +1,5 @@
 // SpotlightInstanceEntity.kt
-package com.example.purramid.thepurramid.data.db
+package com.example.purramid.purramidscreenshade.data.db
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey

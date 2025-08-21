@@ -1,5 +1,5 @@
 // MaskView.kt
-package com.example.purramid.thepurramid.screen_mask.ui
+package com.example.purramid.purramidscreenshade.screen_mask.ui
 
 import android.animation.ObjectAnimator
 import android.annotation.SuppressLint
@@ -21,9 +21,9 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import com.bumptech.glide.Glide
 import com.google.android.material.snackbar.Snackbar
-import com.example.purramid.thepurramid.R
-import com.example.purramid.thepurramid.screen_mask.ScreenMaskState
-import com.example.purramid.thepurramid.util.dpToPx
+import com.example.purramid.purramidscreenshade.R
+import com.example.purramid.purramidscreenshade.screen_mask.ScreenMaskState
+import com.example.purramid.purramidscreenshade.util.dpToPx
 import kotlin.math.abs
 import kotlin.math.max
 import androidx.core.graphics.toColorInt

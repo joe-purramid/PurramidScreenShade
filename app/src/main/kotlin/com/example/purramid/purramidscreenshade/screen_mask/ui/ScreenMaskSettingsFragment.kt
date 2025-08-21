@@ -1,5 +1,5 @@
 // ScreenMaskSettingsFragment.kt
-package com.example.purramid.thepurramid.screen_mask.ui
+package com.example.purramid.purramidscreenshade.screen_mask.ui
 
 import android.content.Context
 import android.content.Intent
@@ -10,16 +10,16 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
-import com.example.purramid.thepurramid.R
-import com.example.purramid.thepurramid.databinding.FragmentScreenMaskSettingsBinding
-import com.example.purramid.thepurramid.screen_mask.ACTION_ADD_NEW_MASK_INSTANCE
-import com.example.purramid.thepurramid.screen_mask.ACTION_REMOVE_HIGHLIGHT
-import com.example.purramid.thepurramid.screen_mask.ACTION_REQUEST_IMAGE_CHOOSER
-import com.example.purramid.thepurramid.screen_mask.ACTION_TOGGLE_LOCK
-import com.example.purramid.thepurramid.screen_mask.ACTION_TOGGLE_LOCK_ALL
-import com.example.purramid.thepurramid.screen_mask.EXTRA_MASK_INSTANCE_ID
-import com.example.purramid.thepurramid.screen_mask.ScreenMaskActivity
-import com.example.purramid.thepurramid.screen_mask.ScreenMaskService
+import com.example.purramid.purramidscreenshade.R
+import com.example.purramid.purramidscreenshade.databinding.FragmentScreenMaskSettingsBinding
+import com.example.purramid.purramidscreenshade.screen_mask.ACTION_ADD_NEW_MASK_INSTANCE
+import com.example.purramid.purramidscreenshade.screen_mask.ACTION_REMOVE_HIGHLIGHT
+import com.example.purramid.purramidscreenshade.screen_mask.ACTION_REQUEST_IMAGE_CHOOSER
+import com.example.purramid.purramidscreenshade.screen_mask.ACTION_TOGGLE_LOCK
+import com.example.purramid.purramidscreenshade.screen_mask.ACTION_TOGGLE_LOCK_ALL
+import com.example.purramid.purramidscreenshade.screen_mask.EXTRA_MASK_INSTANCE_ID
+import com.example.purramid.purramidscreenshade.screen_mask.ScreenMaskActivity
+import com.example.purramid.purramidscreenshade.screen_mask.ScreenMaskService
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.snackbar.Snackbar
 import dagger.hilt.android.AndroidEntryPoint

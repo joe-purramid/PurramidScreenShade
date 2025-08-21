@@ -1,5 +1,5 @@
 // SpotlightUiState.kt
-package com.example.purramid.thepurramid.spotlight
+package com.example.purramid.purramidscreenshade.spotlight
 
 /**
  * Represents the UI state for the Spotlight overlay.

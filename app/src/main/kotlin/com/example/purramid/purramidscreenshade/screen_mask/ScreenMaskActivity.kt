@@ -1,5 +1,5 @@
 // ScreenMaskActivity.kt
-package com.example.purramid.thepurramid.screen_mask
+package com.example.purramid.purramidscreenshade.screen_mask
 
 import android.app.AlertDialog
 import android.content.Intent
@@ -18,9 +18,9 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.lifecycle.lifecycleScope
-import com.example.purramid.thepurramid.R
-import com.example.purramid.thepurramid.databinding.ActivityScreenMaskBinding
-import com.example.purramid.thepurramid.screen_mask.ui.ScreenMaskSettingsFragment
+import com.example.purramid.purramidscreenshade.R
+import com.example.purramid.purramidscreenshade.databinding.ActivityScreenMaskBinding
+import com.example.purramid.purramidscreenshade.screen_mask.ui.ScreenMaskSettingsFragment
 import com.google.android.material.snackbar.Snackbar
 import dagger.hilt.android.AndroidEntryPoint
 import java.io.ByteArrayOutputStream

@@ -1,5 +1,5 @@
 // ScreenMaskState.kt
-package com.example.purramid.thepurramid.screen_mask
+package com.example.purramid.purramidscreenshade.screen_mask
 
 data class ScreenMaskState(
     val instanceId: Int = 0,

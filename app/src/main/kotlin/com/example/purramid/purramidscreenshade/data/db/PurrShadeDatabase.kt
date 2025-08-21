@@ -1,5 +1,5 @@
-// PurramidDatabase.kt
-package com.example.purramid.thepurramid.data.db 
+// PurrShadeDatabase.kt
+package com.example.purramid.purramidscreenshade.data.db 
 
 import android.content.Context
 import androidx.room.migration.Migration

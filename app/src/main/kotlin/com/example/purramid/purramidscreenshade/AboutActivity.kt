@@ -1,4 +1,4 @@
-package com.example.purramid.thepurramid
+package com.example.purramid.purramidscreenshade
 
 import android.os.Bundle
 import android.widget.TextView

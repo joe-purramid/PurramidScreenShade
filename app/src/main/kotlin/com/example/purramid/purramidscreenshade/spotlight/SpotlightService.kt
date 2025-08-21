@@ -1,5 +1,5 @@
 // SpotlightService.kt
-package com.example.purramid.thepurramid.spotlight
+package com.example.purramid.purramidscreenshade.spotlight
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -21,14 +21,14 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.lifecycleScope
-import com.example.purramid.thepurramid.MainActivity
-import com.example.purramid.thepurramid.R
-import com.example.purramid.thepurramid.data.db.SpotlightDao
-import com.example.purramid.thepurramid.di.SpotlightPrefs
-import com.example.purramid.thepurramid.instance.InstanceManager
-import com.example.purramid.thepurramid.spotlight.SpotlightOpening
-import com.example.purramid.thepurramid.spotlight.viewmodel.SpotlightViewModel
-import com.example.purramid.thepurramid.spotlight.util.SpotlightMigrationHelper
+import com.example.purramid.purramidscreenshade.MainActivity
+import com.example.purramid.purramidscreenshade.R
+import com.example.purramid.purramidscreenshade.data.db.SpotlightDao
+import com.example.purramid.purramidscreenshade.di.SpotlightPrefs
+import com.example.purramid.purramidscreenshade.instance.InstanceManager
+import com.example.purramid.purramidscreenshade.spotlight.SpotlightOpening
+import com.example.purramid.purramidscreenshade.spotlight.viewmodel.SpotlightViewModel
+import com.example.purramid.purramidscreenshade.spotlight.util.SpotlightMigrationHelper
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.collectLatest

@@ -1,15 +1,15 @@
 // SpotlightViewModel.kt
-package com.example.purramid.thepurramid.spotlight.viewmodel
+package com.example.purramid.purramidscreenshade.spotlight.viewmodel
 
 import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.purramid.thepurramid.data.db.SpotlightDao
-import com.example.purramid.thepurramid.data.db.SpotlightInstanceEntity
-import com.example.purramid.thepurramid.data.db.SpotlightOpeningEntity
-import com.example.purramid.thepurramid.spotlight.SpotlightUiState
-import com.example.purramid.thepurramid.spotlight.SpotlightOpening
+import com.example.purramid.purramidscreenshade.data.db.SpotlightDao
+import com.example.purramid.purramidscreenshade.data.db.SpotlightInstanceEntity
+import com.example.purramid.purramidscreenshade.data.db.SpotlightOpeningEntity
+import com.example.purramid.purramidscreenshade.spotlight.SpotlightUiState
+import com.example.purramid.purramidscreenshade.spotlight.SpotlightOpening
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow

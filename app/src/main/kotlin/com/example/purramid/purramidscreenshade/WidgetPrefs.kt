@@ -1,5 +1,5 @@
 // WidgetPrefs.kt
-package com.example.purramid.thepurramid
+package com.example.purramid.purramidscreenshade
 
 import android.content.Context
 import android.content.Intent

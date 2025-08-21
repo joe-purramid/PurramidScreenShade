@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Disabled state - grayed out -->
+    <item android:state_enabled="false" android:color="#FFBDBDBD" />
+    <!-- Pressed state -->
+    <item android:state_pressed="true" android:color="#FF0D47A1" />
+    <!-- Activated state - blue -->
+    <item android:state_activated="true" android:color="#FF1976D2" />
+    <!-- Focused state (for accessibility) -->
+    <item android:state_focused="true" android:color="#FF1565C0" />
+    <!-- Default state - medium gray -->
+    <item android:color="#FF757575" />
+</selector>

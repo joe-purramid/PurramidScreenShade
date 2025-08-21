@@ -1,4 +1,4 @@
-package com.example.purramid.thepurramid.spotlight
+package com.example.purramid.purramidscreenshade.spotlight
 
 import android.content.Context
 import android.content.Intent
@@ -6,10 +6,10 @@ import android.os.Bundle
 import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
-import com.example.purramid.thepurramid.R
-import com.example.purramid.thepurramid.databinding.ActivitySpotlightBinding
-import com.example.purramid.thepurramid.instance.InstanceManager
-import com.example.purramid.thepurramid.spotlight.ui.SpotlightSettingsFragment
+import com.example.purramid.purramidscreenshade.R
+import com.example.purramid.purramidscreenshade.databinding.ActivitySpotlightBinding
+import com.example.purramid.purramidscreenshade.instance.InstanceManager
+import com.example.purramid.purramidscreenshade.spotlight.ui.SpotlightSettingsFragment
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

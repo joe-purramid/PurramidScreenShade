@@ -1,5 +1,5 @@
 // ScreenServiceMask.kt
-package com.example.purramid.thepurramid.screen_mask
+package com.example.purramid.purramidscreenshade.screen_mask
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -22,12 +22,12 @@ import androidx.lifecycle.lifecycleScope
 import androidx.savedstate.SavedStateRegistry
 import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
-import com.example.purramid.thepurramid.R
-import com.example.purramid.thepurramid.data.db.ScreenMaskDao
-import com.example.purramid.thepurramid.instance.InstanceManager
-import com.example.purramid.thepurramid.screen_mask.ui.MaskView
-import com.example.purramid.thepurramid.screen_mask.viewmodel.ScreenMaskViewModel
-import com.example.purramid.thepurramid.util.dpToPx
+import com.example.purramid.purramidscreenshade.R
+import com.example.purramid.purramidscreenshade.data.db.ScreenMaskDao
+import com.example.purramid.purramidscreenshade.instance.InstanceManager
+import com.example.purramid.purramidscreenshade.screen_mask.ui.MaskView
+import com.example.purramid.purramidscreenshade.screen_mask.viewmodel.ScreenMaskViewModel
+import com.example.purramid.purramidscreenshade.util.dpToPx
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job

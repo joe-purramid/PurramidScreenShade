@@ -1,5 +1,5 @@
-// PurramidApplication.kt
-package com.example.purramid.thepurramid
+// PurramidScreenShadeApplication.kt
+package com.example.purramid.purramidscreenshade
 
 import android.app.Application
 import android.content.Context

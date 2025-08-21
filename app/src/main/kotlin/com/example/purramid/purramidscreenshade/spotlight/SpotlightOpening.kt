@@ -1,5 +1,5 @@
 // SpotlightOpening.kt
-package com.example.purramid.thepurramid.spotlight
+package com.example.purramid.purramidscreenshade.spotlight
 
 /**
  * Data class representing a spotlight opening (hole) in the overlay.

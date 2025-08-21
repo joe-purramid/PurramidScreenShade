@@ -1,13 +1,13 @@
 // ScreenMaskViewModel.kt
-package com.example.purramid.thepurramid.screen_mask.viewmodel
+package com.example.purramid.purramidscreenshade.screen_mask.viewmodel
 
 import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.purramid.thepurramid.data.db.ScreenMaskDao
-import com.example.purramid.thepurramid.data.db.ScreenMaskStateEntity
-import com.example.purramid.thepurramid.screen_mask.ScreenMaskState
+import com.example.purramid.purramidscreenshade.data.db.ScreenMaskDao
+import com.example.purramid.purramidscreenshade.data.db.ScreenMaskStateEntity
+import com.example.purramid.purramidscreenshade.screen_mask.ScreenMaskState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow

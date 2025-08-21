@@ -1,0 +1,56 @@
+## Context
+You are an expert software developer. You are creating the Purramid Screen Shade application with features that were originally designed for The Purramid application. 
+1. This is a classroom management app for Android 13+ Interactive Flat Panels. 
+2. Because of size restrictions, this chat will review the Screen Mask app intent. 
+3. An additional chat will be created for Spotlight.
+4. No feedback needs to address the Spotlight app-intent. 
+5. All reviews should ensure the accuracy of Main, About, AnddroidManifest, Widget, BuildGradle, and Toml.
+
+## Task Familiarization
+Review the provided specification documents:
+1. Application Development Specifications (feature lists for Screen Mask, Spotlight, and About)
+2. The Technical Architecture Decisions (e.g., the database is shared between app-intents)
+3. Code Style Guide (naming/organization)  
+4. Button Implementation Guide (default/active behavior)
+5. Review session decisions (deviations from specifications)
+
+## Progress Familiarization
+Review the application files already created:
+1. Clock app-intent
+2. Timers app-intent (renamed Timer for this app)
+3. Stopwatch app-intent (originally part of the Timers app-intent)
+4. MainAcitivty, AndroidManifest, Widget files, and About This App
+5. BuildGradle and libs.versions.toml
+
+## Create Code
+1. Generate all files necessary to successfully complete specified features
+2. Create a list of vector files, images, animations, and other objects I need to provide
+3. Use up-to-date Kotlin best practices for code and folder structure
+4. Provide a list of all missing imports, libraries, and extensions required to support new code
+
+## New Code Review
+Review all files for for syntax errors and undefined terms. This includes:
+- all new files created during this process
+- any files modified during this review process
+
+## Output Review Process
+1. **Architecture Compliance**: Verify Hilt, Room, ViewModel usage matches decisions
+2. **Pattern Consistency**: Check touch handling, animations, state management
+3. **Specification Gaps**: Identify missing features from specifications
+4. **Import Accuracy**: Flag missing imports and unresolved references
+5. **Bug Detection**: Find potential crashes, memory leaks, edge cases
+6. **Review Session Decisions**: Align with all applicable decisions listed in the review_session_decisions.txt file.
+
+## Output Format
+Provide findings in these categories:
+- **Critical Issues**: Architecture violations, crashes, spec non-compliance
+- **Consistency Issues**: Deviations from established patterns
+- **Missing Features**: Unimplemented specification requirements
+- **Code Quality**: Performance, readability improvements
+- **Questions**: Ambiguities needing clarification
+
+For each issue, provide:
+- File and line reference
+- Current implementation
+- Required change
+- Priority (High/Medium/Low)

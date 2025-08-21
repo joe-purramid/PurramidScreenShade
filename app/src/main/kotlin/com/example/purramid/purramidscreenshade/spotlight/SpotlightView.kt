@@ -1,5 +1,5 @@
 // SpotlightView.kt
-package com.example.purramid.thepurramid.spotlight
+package com.example.purramid.purramidscreenshade.spotlight
 
 import android.content.Context
 import android.graphics.*
@@ -9,9 +9,9 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
 import androidx.core.content.ContextCompat
-import com.example.purramid.thepurramid.R
-import com.example.purramid.thepurramid.spotlight.SpotlightOpening
-import com.example.purramid.thepurramid.util.dpToPx
+import com.example.purramid.purramidscreenshade.R
+import com.example.purramid.purramidscreenshade.spotlight.SpotlightOpening
+import com.example.purramid.purramidscreenshade.util.dpToPx
 import kotlin.math.absoluteValue
 import kotlin.math.hypot
 import kotlin.math.min
