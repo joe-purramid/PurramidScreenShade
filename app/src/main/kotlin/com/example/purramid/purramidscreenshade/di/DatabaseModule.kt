@@ -25,6 +25,14 @@ object DatabaseModule {
 
     @Provides
     @Singleton
+    fun provideScreenMaskRepository(
+        screenMaskDao: ScreenMaskDao
+    ): ScreenMaskRepository {
+        return ScreenMaskRepository(screenMaskDao)
+    }
+
+    @Provides
+    @Singleton
     fun provideSpotlightDao(database: PurrShadeDatabase): SpotlightDao {
         return database.spotlightDao()
     }
