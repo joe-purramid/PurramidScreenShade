@@ -1,6 +1,6 @@
 // InstanceManager.kt
 
-package com.example.purramid.purramidtime.instance
+package com.example.purramid.purramidscreenshade.instance
 
 import android.content.Context
 import androidx.core.content.edit

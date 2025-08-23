@@ -1,14 +1,20 @@
 // SpotlightRepository.kt
-package com.example.purramid.purramidscreenshade.spotlight
+package com.example.purramid.purramidscreenshade.spotlight.repository
 
 import android.util.Log
 import com.example.purramid.purramidscreenshade.data.db.SpotlightDao
 import com.example.purramid.purramidscreenshade.data.db.SpotlightInstanceEntity
 import com.example.purramid.purramidscreenshade.data.db.SpotlightOpeningEntity
+import com.example.purramid.purramidscreenshade.spotlight.SpotlightOpening
+import com.example.purramid.purramidscreenshade.spotlight.SpotlightUiState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.maxOf
@@ -22,49 +28,137 @@ class SpotlightRepository @Inject constructor(
         private const val DEFAULT_RADIUS = 125f
     }
 
-    // ===== Instance Management =====
-    
-    suspend fun createOrActivateInstance(instanceId: Int): SpotlightInstanceEntity = withContext(Dispatchers.IO) {
-        var instance = spotlightDao.getInstanceById(instanceId)
-        if (instance == null) {
-            instance = SpotlightInstanceEntity(
-                instanceId = instanceId,
+    // State management per instance (like ScreenMaskRepository)
+    private val instanceStates = ConcurrentHashMap<Int, MutableStateFlow<SpotlightUiState>>()
+
+    /**
+     * Get or create StateFlow for an instance
+     */
+    fun getSpotlightStateFlow(instanceId: Int): StateFlow<SpotlightUiState> {
+        return instanceStates.getOrPut(instanceId) {
+            MutableStateFlow(SpotlightUiState(instanceId = instanceId))
+        }.asStateFlow()
+    }
+
+    /**
+     * Load state for an instance (creates if doesn't exist)
+     */
+    suspend fun loadState(instanceId: Int, screenWidth: Int = 1920, screenHeight: Int = 1080) = withContext(Dispatchers.IO) {
+        try {
+            // Ensure instance exists
+            var instance = spotlightDao.getInstanceById(instanceId)
+            if (instance == null) {
+                instance = SpotlightInstanceEntity(
+                    instanceId = instanceId,
+                    isActive = true
+                )
+                spotlightDao.insertOrUpdateInstance(instance)
+                Log.d(TAG, "Created new Spotlight instance: $instanceId")
+            }
+
+            // Load openings
+            val openings = spotlightDao.getOpeningsForInstance(instanceId)
+            if (openings.isEmpty()) {
+                // Create default opening
+                createDefaultOpening(instanceId, screenWidth, screenHeight)
+            } else {
+                // Update state with existing openings
+                updateStateFromOpenings(instanceId, openings)
+            }
+
+            // Start observing database changes
+            observeOpenings(instanceId)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error loading state for instance $instanceId", e)
+            updateState(instanceId) { it.copy(error = "Failed to load state") }
+        }
+    }
+
+    /**
+     * Clone state from one instance to another
+     */
+    suspend fun cloneState(sourceId: Int, targetId: Int) = withContext(Dispatchers.IO) {
+        try {
+            val sourceOpenings = spotlightDao.getOpeningsForInstance(sourceId)
+
+            // Create target instance
+            val targetInstance = SpotlightInstanceEntity(
+                instanceId = targetId,
                 isActive = true
             )
-            spotlightDao.insertOrUpdateInstance(instance)
-            Log.d(TAG, "Created new Spotlight instance: $instanceId")
-        } else if (!instance.isActive) {
-            instance = instance.copy(isActive = true)
-            spotlightDao.insertOrUpdateInstance(instance)
-            Log.d(TAG, "Reactivated Spotlight instance: $instanceId")
+            spotlightDao.insertOrUpdateInstance(targetInstance)
+
+            // Clone openings
+            sourceOpenings.forEach { opening ->
+                val clonedOpening = opening.copy(
+                    openingId = 0, // Auto-generate new ID
+                    instanceId = targetId
+                )
+                spotlightDao.insertOpening(clonedOpening)
+            }
+
+            Log.d(TAG, "Cloned state from instance $sourceId to $targetId")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error cloning state", e)
         }
-        instance
     }
 
-    suspend fun deactivateInstance(instanceId: Int) = withContext(Dispatchers.IO) {
-        spotlightDao.deactivateInstance(instanceId)
+    /**
+     * Observe database changes for an instance
+     */
+    private suspend fun observeOpenings(instanceId: Int) {
+        spotlightDao.getOpeningsForInstanceFlow(instanceId).collect { openingEntities ->
+            updateStateFromOpenings(instanceId, openingEntities)
+        }
     }
 
+    private fun updateStateFromOpenings(instanceId: Int, openingEntities: List<SpotlightOpeningEntity>) {
+        val openings = openingEntities.map { mapEntityToOpening(it) }
+        updateState(instanceId) { currentState ->
+            currentState.copy(
+                openings = openings,
+                isAnyLocked = openings.any { it.isLocked },
+                areAllLocked = openings.isNotEmpty() && openings.all { it.isLocked },
+                canAddMore = openings.size < SpotlightUiState.MAX_OPENINGS,
+                isLoading = false,
+                error = null
+            )
+        }
+    }
+
+    /**
+     * Update state using a transformation function
+     */
+    private fun updateState(instanceId: Int, transform: (SpotlightUiState) -> SpotlightUiState) {
+        val stateFlow = instanceStates[instanceId] ?: return
+        stateFlow.value = transform(stateFlow.value)
+    }
+
+    /**
+     * Get all active instance IDs
+     */
+    suspend fun getActiveInstanceIds(): List<Int> = withContext(Dispatchers.IO) {
+        spotlightDao.getActiveInstances().map { it.instanceId }
+    }
+
+    /**
+     * Get all active instances
+     */
     suspend fun getActiveInstances(): List<SpotlightInstanceEntity> = withContext(Dispatchers.IO) {
         spotlightDao.getActiveInstances()
     }
 
-    suspend fun getActiveInstanceCount(): Int = withContext(Dispatchers.IO) {
-        spotlightDao.getActiveInstanceCount()
+    /**
+     * Get all states (for restoration)
+     */
+    suspend fun getAllStates(): List<SpotlightInstanceEntity> = withContext(Dispatchers.IO) {
+        spotlightDao.getActiveInstances()
     }
 
-    // ===== Opening Management =====
-
-    fun getOpeningsFlow(instanceId: Int): Flow<List<SpotlightOpening>> {
-        return spotlightDao.getOpeningsForInstanceFlow(instanceId)
-            .map { entities -> entities.map { mapEntityToOpening(it) } }
-    }
-
-    suspend fun getOpenings(instanceId: Int): List<SpotlightOpening> = withContext(Dispatchers.IO) {
-        spotlightDao.getOpeningsForInstance(instanceId).map { mapEntityToOpening(it) }
-    }
-
-    suspend fun createDefaultOpening(instanceId: Int, screenWidth: Int, screenHeight: Int) = withContext(Dispatchers.IO) {
+    /**
+     * Create default opening for an instance
+     */
+    private suspend fun createDefaultOpening(instanceId: Int, screenWidth: Int, screenHeight: Int) {
         val defaultOpening = SpotlightOpeningEntity(
             instanceId = instanceId,
             centerX = screenWidth / 2f,
@@ -80,6 +174,9 @@ class SpotlightRepository @Inject constructor(
         spotlightDao.insertOpening(defaultOpening)
     }
 
+    /**
+     * Add a new opening to an instance
+     */
     suspend fun addOpening(instanceId: Int, screenWidth: Int, screenHeight: Int): Boolean = withContext(Dispatchers.IO) {
         try {
             val existingCount = spotlightDao.getOpeningCountForInstance(instanceId)
@@ -113,6 +210,9 @@ class SpotlightRepository @Inject constructor(
         }
     }
 
+    /**
+     * Update opening position
+     */
     suspend fun updateOpeningPosition(openingId: Int, newX: Float, newY: Float) = withContext(Dispatchers.IO) {
         try {
             val opening = spotlightDao.getOpeningById(openingId)
@@ -125,15 +225,21 @@ class SpotlightRepository @Inject constructor(
         }
     }
 
-    suspend fun updateOpeningSize(opening: SpotlightOpening) = withContext(Dispatchers.IO) {
+    /**
+     * Update opening size
+     */
+    suspend fun updateOpeningSize(opening: SpotlightOpening, instanceId: Int) = withContext(Dispatchers.IO) {
         try {
-            val entity = mapOpeningToEntity(opening, opening.openingId) // We'll need the instanceId
+            val entity = mapOpeningToEntity(opening, instanceId)
             spotlightDao.updateOpening(entity)
         } catch (e: Exception) {
             Log.e(TAG, "Error updating opening size", e)
         }
     }
 
+    /**
+     * Toggle opening shape
+     */
     suspend fun toggleOpeningShape(openingId: Int) = withContext(Dispatchers.IO) {
         try {
             val opening = spotlightDao.getOpeningById(openingId)
@@ -173,7 +279,10 @@ class SpotlightRepository @Inject constructor(
         }
     }
 
-    suspend fun toggleOpeningLock(openingId: Int) = withContext(Dispatchers.IO) {
+    /**
+     * Toggle lock state for an opening
+     */
+    suspend fun toggleLock(openingId: Int) = withContext(Dispatchers.IO) {
         try {
             val opening = spotlightDao.getOpeningById(openingId)
             if (opening != null) {
@@ -184,7 +293,10 @@ class SpotlightRepository @Inject constructor(
         }
     }
 
-    suspend fun setAllOpeningsLockState(instanceId: Int, isLocked: Boolean) = withContext(Dispatchers.IO) {
+    /**
+     * Set lock state for all openings in an instance
+     */
+    suspend fun setAllLocked(instanceId: Int, isLocked: Boolean) = withContext(Dispatchers.IO) {
         try {
             spotlightDao.updateAllOpeningsLockState(instanceId, isLocked)
         } catch (e: Exception) {
@@ -192,12 +304,21 @@ class SpotlightRepository @Inject constructor(
         }
     }
 
+    /**
+     * Toggle controls visibility
+     */
+    fun toggleControlsVisibility(instanceId: Int) {
+        updateState(instanceId) { it.copy(showControls = !it.showControls) }
+    }
+
+    /**
+     * Delete an opening
+     */
     suspend fun deleteOpening(openingId: Int): Boolean = withContext(Dispatchers.IO) {
         try {
-            // Get the opening to find its instance
             val opening = spotlightDao.getOpeningById(openingId) ?: return@withContext false
             val count = spotlightDao.getOpeningCountForInstance(opening.instanceId)
-            
+
             if (count > 1) {
                 spotlightDao.deleteOpening(openingId)
                 true
@@ -210,8 +331,29 @@ class SpotlightRepository @Inject constructor(
         }
     }
 
-    suspend fun deleteInstanceAndOpenings(instanceId: Int) = withContext(Dispatchers.IO) {
-        spotlightDao.deleteInstanceAndOpenings(instanceId)
+    /**
+     * Delete state for an instance
+     */
+    suspend fun deleteState(instanceId: Int) = withContext(Dispatchers.IO) {
+        try {
+            spotlightDao.deleteInstanceAndOpenings(instanceId)
+            instanceStates.remove(instanceId)
+            Log.d(TAG, "Deleted state for instance $instanceId")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error deleting state", e)
+        }
+    }
+
+    /**
+     * Deactivate an instance
+     */
+    suspend fun deactivateInstance(instanceId: Int) = withContext(Dispatchers.IO) {
+        try {
+            spotlightDao.deactivateInstance(instanceId)
+            Log.d(TAG, "Deactivated instance $instanceId")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error deactivating instance", e)
+        }
     }
 
     // ===== Mapping Functions =====

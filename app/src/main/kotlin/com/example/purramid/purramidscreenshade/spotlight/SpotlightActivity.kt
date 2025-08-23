@@ -1,14 +1,18 @@
+// SpotlightActivity.kt
 package com.example.purramid.purramidscreenshade.spotlight
 
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.example.purramid.purramidscreenshade.R
 import com.example.purramid.purramidscreenshade.databinding.ActivitySpotlightBinding
 import com.example.purramid.purramidscreenshade.instance.InstanceManager
+import com.example.purramid.purramidscreenshade.spotlight.repository.SpotlightRepository
 import com.example.purramid.purramidscreenshade.spotlight.ui.SpotlightSettingsFragment
+import com.example.purramid.purramidscreenshade.spotlight.viewmodel.SpotlightViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -20,9 +24,10 @@ import javax.inject.Inject
 class SpotlightActivity : AppCompatActivity() {
 
     @Inject lateinit var instanceManager: InstanceManager
-    @Inject lateinit var repository: SpotlightRepository  // Add repository injection
+    @Inject lateinit var repository: SpotlightRepository
 
     private lateinit var binding: ActivitySpotlightBinding
+    private val viewModel: SpotlightViewModel by viewModels()
     private val activityScope = CoroutineScope(Dispatchers.Main)
 
     companion object {
@@ -31,6 +36,12 @@ class SpotlightActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Set instance ID in intent extras BEFORE super.onCreate() for SavedStateHandle
+        val requestingInstanceId = intent.getIntExtra(SpotlightService.KEY_INSTANCE_ID, -1)
+        if (requestingInstanceId != -1) {
+            intent.putExtra(SpotlightViewModel.KEY_INSTANCE_ID, requestingInstanceId)
+        }
+
         super.onCreate(savedInstanceState)
         binding = ActivitySpotlightBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -52,21 +63,17 @@ class SpotlightActivity : AppCompatActivity() {
 
     private suspend fun handleDefaultLaunch() = withContext(Dispatchers.IO) {
         try {
-            // Check for active instances using repository instead of instance manager alone
             val activeInstances = repository.getActiveInstances()
 
             withContext(Dispatchers.Main) {
                 when {
                     activeInstances.isNotEmpty() -> {
-                        // There are active instances, show settings
                         Log.d(TAG, "Found ${activeInstances.size} active Spotlight instances")
                         showSettingsFragment()
                     }
                     else -> {
-                        // No active instances, check if we can create one
                         val nextInstanceId = instanceManager.getNextInstanceId(InstanceManager.SPOTLIGHT)
                         if (nextInstanceId != null) {
-                            // Release the ID since the service will request it
                             instanceManager.releaseInstanceId(InstanceManager.SPOTLIGHT, nextInstanceId)
 
                             Log.d(TAG, "No active Spotlights, starting new service")
@@ -93,8 +100,11 @@ class SpotlightActivity : AppCompatActivity() {
     private fun showSettingsFragment() {
         if (supportFragmentManager.findFragmentByTag(SpotlightSettingsFragment.TAG) == null) {
             Log.d(TAG, "Showing Spotlight settings fragment.")
+            val instanceId = intent.getIntExtra(SpotlightService.KEY_INSTANCE_ID, -1)
+            val fragment = SpotlightSettingsFragment.newInstance(instanceId)
+
             supportFragmentManager.beginTransaction()
-                .replace(R.id.spotlight_fragment_container, SpotlightSettingsFragment.newInstance(), SpotlightSettingsFragment.TAG)
+                .replace(R.id.spotlight_fragment_container, fragment, SpotlightSettingsFragment.TAG)
                 .commit()
         }
     }
