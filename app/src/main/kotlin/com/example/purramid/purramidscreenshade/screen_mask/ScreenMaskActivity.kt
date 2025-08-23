@@ -14,6 +14,7 @@ import android.util.Log
 import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
@@ -21,6 +22,7 @@ import androidx.lifecycle.lifecycleScope
 import com.example.purramid.purramidscreenshade.R
 import com.example.purramid.purramidscreenshade.databinding.ActivityScreenMaskBinding
 import com.example.purramid.purramidscreenshade.screen_mask.ui.ScreenMaskSettingsFragment
+import com.example.purramid.purramidscreenshade.screen_mask.viewmodel.ScreenMaskViewModel
 import com.google.android.material.snackbar.Snackbar
 import dagger.hilt.android.AndroidEntryPoint
 import java.io.ByteArrayOutputStream
@@ -35,6 +37,9 @@ class ScreenMaskActivity : AppCompatActivity() {
     private lateinit var binding: ActivityScreenMaskBinding
     private lateinit var imagePickerLauncher: ActivityResultLauncher<String>
 
+    // Use Hilt's viewModels delegate with default factory
+    private val viewModel: ScreenMaskViewModel by viewModels()
+
     companion object {
         private const val TAG = "ScreenMaskActivity"
         const val ACTION_LAUNCH_IMAGE_CHOOSER_FROM_SERVICE = "com.example.purramid.screen_mask.ACTION_LAUNCH_IMAGE_CHOOSER_FROM_SERVICE"
@@ -44,6 +49,13 @@ class ScreenMaskActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // IMPORTANT: Set the instance ID in the intent extras BEFORE super.onCreate()
+        // This ensures SavedStateHandle receives the value
+        val requestingInstanceId = intent.getIntExtra(EXTRA_MASK_INSTANCE_ID, -1)
+        if (requestingInstanceId != -1) {
+            intent.putExtra(ScreenMaskViewModel.KEY_INSTANCE_ID, requestingInstanceId)
+        }
+
         super.onCreate(savedInstanceState)
         binding = ActivityScreenMaskBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -87,6 +99,16 @@ class ScreenMaskActivity : AppCompatActivity() {
                 // Default: Show settings
                 val requestingInstanceId = intent.getIntExtra(EXTRA_MASK_INSTANCE_ID, -1)
                 showSettingsFragment(requestingInstanceId)
+            }
+        }
+    }
+
+    private fun observeViewModel() {
+        lifecycleScope.launch {
+            viewModel.uiState.collect { state ->
+                Log.d(TAG, "Mask state updated: locked=${state.isLocked}, controls=${state.isControlsVisible}")
+                // Update UI if needed
+                // For example, you could update the title or other UI elements based on state
             }
         }
     }

@@ -5,8 +5,7 @@ import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.purramid.purramidscreenshade.data.db.ScreenMaskDao
-import com.example.purramid.purramidscreenshade.data.db.ScreenMaskStateEntity
+import com.example.purramid.purramidscreenshade.screen_mask.repository.ScreenMaskRepository
 import com.example.purramid.purramidscreenshade.screen_mask.ScreenMaskState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -20,185 +19,63 @@ import javax.inject.Inject
 
 @HiltViewModel
 class ScreenMaskViewModel @Inject constructor(
-    private val screenMaskDao: ScreenMaskDao,
-    private val savedStateHandle: SavedStateHandle // Hilt injects this
+    private val repository: ScreenMaskRepository,
+    savedStateHandle: SavedStateHandle // Hilt injects this
 ) : ViewModel() {
 
     companion object {
         const val KEY_INSTANCE_ID = "screenMaskInstanceId"
-        private const val TAG = "ScreenMaskViewModel"
     }
 
-    private var instanceId: Int = 0
+    private var instanceId: Int = savedStateHandle.get<Int>(KEY_INSTANCE_ID) ?: 0
 
-    fun initialize(id: Int) {
-        if (instanceId != 0) {
-            Log.w(TAG, "ViewModel already initialized with ID $instanceId, ignoring new ID $id")
-            return
-        }
-
-        instanceId = id
-        savedStateHandle[KEY_INSTANCE_ID] = id
-
-        Log.d(TAG, "Initializing ViewModel for instanceId: $instanceId")
-        if (instanceId != 0) {
-            loadState()
-        }
+    // Use repository's state flow if instance ID is valid, otherwise create empty state
+    val uiState: StateFlow<ScreenMaskState> = if (instanceId > 0) {
+        repository.getMaskStateFlow(instanceId)
+    } else {
+        MutableStateFlow(ScreenMaskState()).asStateFlow()
     }
 
-    private val _uiState = MutableStateFlow(ScreenMaskState(instanceId = instanceId))
-    val uiState: StateFlow<ScreenMaskState> = _uiState.asStateFlow()
-
-    private fun loadState() {
-        viewModelScope.launch(Dispatchers.IO) {
-            val entity = screenMaskDao.getById(instanceId)
-            withContext(Dispatchers.Main) {
-                if (entity != null) {
-                    _uiState.value = mapEntityToState(entity)
-                    Log.d(TAG, "Loaded state for instance $instanceId: ${uiState.value}")
-                } else {
-                    // If no state in DB, this is likely a new instance.
-                    // The service would have generated an ID. We save the initial default state.
-                    Log.d(TAG, "No state in DB for instance $instanceId. Saving initial default state.")
-                    saveState(_uiState.value) // Save current (default) state
-                }
+    init {
+        if (instanceId > 0) {
+            viewModelScope.launch {
+                repository.loadState(instanceId)
             }
         }
     }
 
     fun updatePosition(x: Int, y: Int) {
-        if (instanceId == 0) {
-            Log.e(TAG, "updatePosition called with uninitialized instanceId")
-            return
+        if (instanceId == 0) return
+        viewModelScope.launch {
+            repository.updatePosition(instanceId, x, y)
         }
-        if (_uiState.value.x == x && _uiState.value.y == y) return
-        _uiState.update { it.copy(x = x, y = y) }
-        saveState(_uiState.value)
     }
 
     fun updateSize(width: Int, height: Int) {
-        if (instanceId == 0) {
-            Log.e(TAG, "updateSize called with uninitialized instanceId")
-            return
+        if (instanceId <= 0) return
+        viewModelScope.launch {
+            repository.updateSize(instanceId, width, height)
         }
-        if (_uiState.value.width == width && _uiState.value.height == height) return
-        _uiState.update { it.copy(width = width, height = height) }
-        saveState(_uiState.value)
     }
 
     fun toggleLock() {
-        if (instanceId == 0) {
-            Log.e(TAG, "toggleLock called with uninitialized instanceId")
-            return
+        if (instanceId <= 0) return
+        viewModelScope.launch {
+            repository.toggleLock(instanceId)
         }
-        _uiState.update { it.copy(isLocked = !it.isLocked) }
-        saveState(_uiState.value)
-    }
-
-    fun setLocked(locked: Boolean, isFromLockAll: Boolean = false) {
-        if (instanceId == 0) {
-            Log.e(TAG, "setLocked called with uninitialized instanceId")
-            return
-        }
-        _uiState.update {
-            it.copy(
-                isLocked = locked,
-                isLockedByLockAll = if (locked && isFromLockAll) true else if (!locked) false else it.isLockedByLockAll
-            )
-        }
-        saveState(_uiState.value)
-    }
-
-    fun isLocked(): Boolean {
-        if (instanceId == 0) {
-            Log.w(TAG, "isLocked called with uninitialized instanceId, returning false")
-            return false
-        }
-        return _uiState.value.isLocked
     }
 
     fun setBillboardImageUri(uriString: String?) {
-        if (instanceId == 0) {
-            Log.e(TAG, "setBillboardImageUri called with uninitialized instanceId")
-            return
+        if (instanceId <= 0) return
+        viewModelScope.launch {
+            repository.setBillboardImageUri(instanceId, uriString)
         }
-        if (_uiState.value.billboardImageUri == uriString) return
-        _uiState.update { it.copy(billboardImageUri = uriString, isBillboardVisible = uriString != null) }
-        saveState(_uiState.value)
     }
 
     fun toggleControlsVisibility() {
-        if (instanceId == 0) {
-            Log.e(TAG, "toggleControlsVisibility called with uninitialized instanceId")
-            return
+        if (instanceId <= 0) return
+        viewModelScope.launch {
+            repository.toggleControlsVisibility(instanceId)
         }
-        _uiState.update { it.copy(isControlsVisible = !it.isControlsVisible) }
-        saveState(_uiState.value)
-    }
-
-    private fun saveState(state: ScreenMaskState) {
-        if (state.instanceId <= 0) {
-            Log.w(TAG, "Attempted to save state with invalid instanceId: ${state.instanceId}")
-            return
-        }
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                screenMaskDao.insertOrUpdate(mapStateToEntity(state))
-                Log.d(TAG, "Saved state for instance ${state.instanceId}")
-            } catch (e: Exception) {
-                Log.e(TAG, "Error saving state for instance ${state.instanceId}", e)
-                // Consider emitting an error event to UI
-            }
-        }
-    }
-
-    fun deleteState() {
-        if (instanceId <= 0) {
-            Log.w(TAG, "deleteState called with invalid instanceId: $instanceId")
-            return
-        }
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                screenMaskDao.deleteById(instanceId)
-                Log.d(TAG, "Deleted state for instance $instanceId")
-            } catch (e: Exception) {
-                Log.e(TAG, "Error deleting state for instance $instanceId", e)
-            }
-        }
-    }
-
-    private fun mapEntityToState(entity: ScreenMaskStateEntity): ScreenMaskState {
-        return ScreenMaskState(
-            instanceId = entity.instanceId,
-            x = entity.x,
-            y = entity.y,
-            width = entity.width,
-            height = entity.height,
-            isLocked = entity.isLocked,
-            isLockedByLockAll = entity.isLockedByLockAll,
-            billboardImageUri = entity.billboardImageUri,
-            isBillboardVisible = entity.isBillboardVisible,
-            isControlsVisible = entity.isControlsVisible
-        )
-    }
-
-    private fun mapStateToEntity(state: ScreenMaskState): ScreenMaskStateEntity {
-        return ScreenMaskStateEntity(
-            instanceId = state.instanceId,
-            x = state.x,
-            y = state.y,
-            width = state.width,
-            height = state.height,
-            isLocked = state.isLocked,
-            isLockedByLockAll = state.isLockedByLockAll,
-            billboardImageUri = state.billboardImageUri,
-            isBillboardVisible = state.isBillboardVisible,
-            isControlsVisible = state.isControlsVisible
-        )
-    }
-
-    override fun onCleared() {
-        Log.d(TAG, "ViewModel cleared for instanceId: $instanceId")
-        super.onCleared()
     }
 }

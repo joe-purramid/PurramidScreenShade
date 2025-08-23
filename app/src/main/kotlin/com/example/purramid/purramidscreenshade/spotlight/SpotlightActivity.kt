@@ -1,6 +1,5 @@
 package com.example.purramid.purramidscreenshade.spotlight
 
-import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
@@ -21,6 +20,7 @@ import javax.inject.Inject
 class SpotlightActivity : AppCompatActivity() {
 
     @Inject lateinit var instanceManager: InstanceManager
+    @Inject lateinit var repository: SpotlightRepository  // Add repository injection
 
     private lateinit var binding: ActivitySpotlightBinding
     private val activityScope = CoroutineScope(Dispatchers.Main)
@@ -36,20 +36,14 @@ class SpotlightActivity : AppCompatActivity() {
         setContentView(binding.root)
         Log.d(TAG, "onCreate - Intent Action: ${intent.action}")
 
-        // Handle the initial intent that started the activity
         handleIntent(intent)
     }
 
-    /**
-     * Handles the logic based on the activity's current intent.
-     * This can be called from onCreate or onNewIntent.
-     */
     private fun handleIntent(currentIntent: Intent?) {
         Log.d(TAG, "handleIntent - Action: ${currentIntent?.action}")
         if (currentIntent?.action == ACTION_SHOW_SPOTLIGHT_SETTINGS) {
             showSettingsFragment()
         } else {
-            // Default launch path if not showing settings
             activityScope.launch {
                 handleDefaultLaunch()
             }
@@ -58,14 +52,14 @@ class SpotlightActivity : AppCompatActivity() {
 
     private suspend fun handleDefaultLaunch() = withContext(Dispatchers.IO) {
         try {
-            // Check for active instances
-            val activeInstanceIds = instanceManager.getActiveInstanceIds(InstanceManager.SPOTLIGHT)
+            // Check for active instances using repository instead of instance manager alone
+            val activeInstances = repository.getActiveInstances()
 
             withContext(Dispatchers.Main) {
                 when {
-                    activeInstanceIds.isNotEmpty() -> {
+                    activeInstances.isNotEmpty() -> {
                         // There are active instances, show settings
-                        Log.d(TAG, "Found ${activeInstanceIds.size} active Spotlight instances")
+                        Log.d(TAG, "Found ${activeInstances.size} active Spotlight instances")
                         showSettingsFragment()
                     }
                     else -> {
@@ -83,7 +77,6 @@ class SpotlightActivity : AppCompatActivity() {
                             finish()
                         } else {
                             Log.w(TAG, "Maximum Spotlight instances reached")
-                            // Could show a toast or dialog here
                             finish()
                         }
                     }

@@ -10,27 +10,22 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.graphics.PixelFormat
 import android.os.Build
-import android.os.Bundle
 import android.os.IBinder
 import android.util.Log
 import android.view.Gravity
 import android.view.WindowManager
 import androidx.core.app.NotificationCompat
 import androidx.lifecycle.LifecycleService
-import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.ViewModelStore
-import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.lifecycleScope
 import com.example.purramid.purramidscreenshade.MainActivity
 import com.example.purramid.purramidscreenshade.R
-import com.example.purramid.purramidscreenshade.data.db.SpotlightDao
 import com.example.purramid.purramidscreenshade.di.SpotlightPrefs
 import com.example.purramid.purramidscreenshade.instance.InstanceManager
-import com.example.purramid.purramidscreenshade.spotlight.SpotlightOpening
-import com.example.purramid.purramidscreenshade.spotlight.viewmodel.SpotlightViewModel
 import com.example.purramid.purramidscreenshade.spotlight.util.SpotlightMigrationHelper
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
@@ -43,24 +38,29 @@ const val ACTION_ADD_NEW_SPOTLIGHT_OPENING = "com.example.purramid.spotlight.ACT
 const val ACTION_CLOSE_INSTANCE = "com.example.purramid.spotlight.ACTION_CLOSE_INSTANCE"
 
 @AndroidEntryPoint
-class SpotlightService : LifecycleService(), ViewModelStoreOwner {
+class SpotlightService : LifecycleService() {
 
     @Inject lateinit var windowManager: WindowManager
     @Inject lateinit var instanceManager: InstanceManager
-    @Inject lateinit var viewModelFactory: ViewModelProvider.Factory
-    @Inject lateinit var spotlightDao: SpotlightDao
+    @Inject lateinit var repository: SpotlightRepository
     @Inject @SpotlightPrefs lateinit var servicePrefs: SharedPreferences
     @Inject lateinit var migrationHelper: SpotlightMigrationHelper
 
-    private val _viewModelStore = ViewModelStore()
-    override val viewModelStore: ViewModelStore = _viewModelStore
-
     private var instanceId: Int? = null
-    private var spotlightViewModel: SpotlightViewModel? = null
     private var spotlightOverlayView: SpotlightView? = null
     private var overlayLayoutParams: WindowManager.LayoutParams? = null
+
+    // State management without ViewModel
+    private val _uiState = MutableStateFlow(SpotlightUiState())
+    private val uiState: StateFlow<SpotlightUiState> = _uiState
+
     private var stateObserverJob: Job? = null
+    private var openingsObserverJob: Job? = null
     private var isForeground = false
+
+    // Lock tracking
+    private var isLockAllActive = false
+    private val individuallyLockedOpenings = mutableSetOf<Int>()
 
     companion object {
         private const val TAG = "SpotlightService"
@@ -92,13 +92,10 @@ class SpotlightService : LifecycleService(), ViewModelStoreOwner {
         when (action) {
             ACTION_START_SPOTLIGHT_SERVICE -> {
                 if (instanceId == null) {
-                    // Check if we should restore an existing instance
                     val existingInstanceId = intent?.getIntExtra(KEY_INSTANCE_ID, -1)?.takeIf { it > 0 }
                     if (existingInstanceId != null) {
-                        // Restoring existing instance
                         restoreExistingInstance(existingInstanceId)
                     } else {
-                        // Create new instance
                         initializeService(intent)
                     }
                 }
@@ -120,11 +117,10 @@ class SpotlightService : LifecycleService(), ViewModelStoreOwner {
                 stopService()
             }
         }
-        return START_STICKY // Ensures service restarts after being killed
+        return START_STICKY
     }
 
     private fun initializeService(intent: Intent?) {
-        // Get or allocate instance ID
         instanceId = intent?.getIntExtra(KEY_INSTANCE_ID, -1)?.takeIf { it > 0 }
             ?: instanceManager.getNextInstanceId(InstanceManager.SPOTLIGHT)
 
@@ -136,56 +132,26 @@ class SpotlightService : LifecycleService(), ViewModelStoreOwner {
 
         Log.d(TAG, "Initializing service with instance ID: $instanceId")
 
-        // Get screen dimensions
         val displayMetrics = resources.displayMetrics
         val screenWidth = displayMetrics.widthPixels
         val screenHeight = displayMetrics.heightPixels
 
-        // Initialize ViewModel with instance ID and screen dimensions
-        spotlightViewModel = ViewModelProvider(
-            this,
-            viewModelFactory
-        ).get("spotlight_$instanceId", SpotlightViewModel::class.java)
+        // Initialize state and start observing
+        lifecycleScope.launch {
+            initializeInstance(instanceId!!, screenWidth, screenHeight)
+        }
 
-        // Initialize the ViewModel with the instance data
-        spotlightViewModel?.initialize(instanceId!!, screenWidth, screenHeight)
-
-        // Create and attach overlay view
         createOverlayView()
-        observeViewModelState()
+        observeState()
         startForegroundServiceIfNeeded()
         updateActiveInstanceCount()
     }
 
-    private fun handleServiceRecovery() {
-        lifecycleScope.launch(Dispatchers.IO) {
-            try {
-                // Check for orphaned instances
-                val activeInstances = spotlightDao.getActiveInstances()
-                for (instance in activeInstances) {
-                    if (!instanceManager.getActiveInstanceIds(InstanceManager.SPOTLIGHT)
-                            .contains(instance.instanceId)) {
-                        // Found orphaned instance, re-register it
-                        Log.d(TAG, "Re-registering orphaned instance ${instance.instanceId}")
-                        instanceManager.registerExistingInstance(
-                            InstanceManager.SPOTLIGHT,
-                            instance.instanceId
-                        )
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Error in service recovery", e)
-            }
-        }
-    }
-
     private fun restoreExistingInstance(existingInstanceId: Int) {
-        // Check if instance is already tracked by InstanceManager
         val isTracked = instanceManager.getActiveInstanceIds(InstanceManager.SPOTLIGHT)
             .contains(existingInstanceId)
 
         if (!isTracked) {
-            // Re-register with instance manager
             val registered = instanceManager.registerExistingInstance(
                 InstanceManager.SPOTLIGHT,
                 existingInstanceId
@@ -200,25 +166,49 @@ class SpotlightService : LifecycleService(), ViewModelStoreOwner {
         instanceId = existingInstanceId
         Log.d(TAG, "Restoring existing instance ID: $instanceId")
 
-        // Get screen dimensions
         val displayMetrics = resources.displayMetrics
         val screenWidth = displayMetrics.widthPixels
         val screenHeight = displayMetrics.heightPixels
 
-        // Initialize ViewModel with restored instance ID
-        spotlightViewModel = ViewModelProvider(
-            this,
-            viewModelFactory
-        ).get("spotlight_$instanceId", SpotlightViewModel::class.java)
+        lifecycleScope.launch {
+            initializeInstance(instanceId!!, screenWidth, screenHeight)
+        }
 
-        // Initialize the ViewModel with the instance data
-        spotlightViewModel?.initialize(instanceId!!, screenWidth, screenHeight)
-
-        // Create and attach overlay view
         createOverlayView()
-        observeViewModelState()
+        observeState()
         startForegroundServiceIfNeeded()
         updateActiveInstanceCount()
+    }
+
+    private suspend fun initializeInstance(instanceId: Int, screenWidth: Int, screenHeight: Int) {
+        // Create or activate instance
+        repository.createOrActivateInstance(instanceId)
+
+        // Check for existing openings
+        val openings = repository.getOpenings(instanceId)
+        if (openings.isEmpty()) {
+            repository.createDefaultOpening(instanceId, screenWidth, screenHeight)
+        }
+
+        // Start observing openings
+        observeOpenings(instanceId)
+    }
+
+    private fun observeOpenings(instanceId: Int) {
+        openingsObserverJob?.cancel()
+        openingsObserverJob = lifecycleScope.launch {
+            repository.getOpeningsFlow(instanceId).collectLatest { openings ->
+                _uiState.value = _uiState.value.copy(
+                    instanceId = instanceId,
+                    openings = openings,
+                    isAnyLocked = openings.any { it.isLocked },
+                    areAllLocked = openings.isNotEmpty() && openings.all { it.isLocked },
+                    canAddMore = openings.size < SpotlightUiState.MAX_OPENINGS,
+                    isLoading = false,
+                    error = null
+                )
+            }
+        }
     }
 
     private fun createOverlayView() {
@@ -227,7 +217,6 @@ class SpotlightService : LifecycleService(), ViewModelStoreOwner {
             return
         }
 
-        // Create layout params for fullscreen overlay
         overlayLayoutParams = WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT,
             WindowManager.LayoutParams.MATCH_PARENT,
@@ -246,7 +235,6 @@ class SpotlightService : LifecycleService(), ViewModelStoreOwner {
             y = 0
         }
 
-        // Create the overlay view
         spotlightOverlayView = SpotlightView(this, null).apply {
             interactionListener = createInteractionListener()
         }
@@ -260,11 +248,11 @@ class SpotlightService : LifecycleService(), ViewModelStoreOwner {
         }
     }
 
-    private fun observeViewModelState() {
+    private fun observeState() {
         stateObserverJob?.cancel()
         stateObserverJob = lifecycleScope.launch {
-            spotlightViewModel?.uiState?.collectLatest { state ->
-                Log.d(TAG, "State update: ${state.openings.size} openings, showControls=${state.showControls}")
+            uiState.collectLatest { state ->
+                Log.d(TAG, "State update: ${state.openings.size} openings")
                 spotlightOverlayView?.updateState(state)
             }
         }
@@ -273,37 +261,69 @@ class SpotlightService : LifecycleService(), ViewModelStoreOwner {
     private fun createInteractionListener(): SpotlightView.SpotlightInteractionListener {
         return object : SpotlightView.SpotlightInteractionListener {
             override fun onOpeningMoved(openingId: Int, newX: Float, newY: Float) {
-                // Handle per-opening movement
-                spotlightViewModel?.updateOpeningFromDrag(openingId, newX, newY)
+                lifecycleScope.launch {
+                    repository.updateOpeningPosition(openingId, newX, newY)
+                }
             }
 
             override fun onOpeningResized(opening: SpotlightOpening) {
-                spotlightViewModel?.updateOpeningFromResize(opening)
+                lifecycleScope.launch {
+                    repository.updateOpeningSize(opening)
+                }
             }
 
             override fun onOpeningShapeToggled(openingId: Int) {
-                spotlightViewModel?.toggleOpeningShape(openingId)
+                lifecycleScope.launch {
+                    repository.toggleOpeningShape(openingId)
+                }
             }
 
             override fun onOpeningLockToggled(openingId: Int) {
-                spotlightViewModel?.toggleOpeningLock(openingId)
+                lifecycleScope.launch {
+                    val opening = _uiState.value.openings.find { it.openingId == openingId }
+                    if (opening != null) {
+                        if (!opening.isLocked && !isLockAllActive) {
+                            individuallyLockedOpenings.add(openingId)
+                        } else if (opening.isLocked && !isLockAllActive) {
+                            individuallyLockedOpenings.remove(openingId)
+                        }
+                    }
+                    repository.toggleOpeningLock(openingId)
+                }
             }
 
             override fun onAllLocksToggled() {
-                spotlightViewModel?.toggleAllLocks()
+                lifecycleScope.launch {
+                    instanceId?.let { id ->
+                        isLockAllActive = !isLockAllActive
+
+                        if (isLockAllActive) {
+                            repository.setAllOpeningsLockState(id, true)
+                        } else {
+                            // Unlock only openings that weren't individually locked
+                            val openings = repository.getOpenings(id)
+                            openings.forEach { opening ->
+                                if (!individuallyLockedOpenings.contains(opening.openingId)) {
+                                    repository.toggleOpeningLock(opening.openingId)
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
             override fun onOpeningDeleted(openingId: Int) {
                 lifecycleScope.launch {
-                    val currentOpenings = spotlightViewModel?.uiState?.value?.openings ?: emptyList()
+                    val currentOpenings = _uiState.value.openings
 
                     if (currentOpenings.size <= 1) {
-                        // This is the last opening, close the entire service
                         Log.d(TAG, "Last opening deleted, stopping service")
                         stopService()
                     } else {
-                        // Just delete this opening
-                        spotlightViewModel?.deleteOpening(openingId)
+                        val deleted = repository.deleteOpening(openingId)
+                        if (!deleted) {
+                            Log.w(TAG, "Could not delete opening")
+                        }
                     }
                 }
             }
@@ -313,8 +333,9 @@ class SpotlightService : LifecycleService(), ViewModelStoreOwner {
             }
 
             override fun onControlsToggled() {
-                val currentShowControls = spotlightViewModel?.uiState?.value?.showControls ?: true
-                spotlightViewModel?.setShowControls(!currentShowControls)
+                _uiState.value = _uiState.value.copy(
+                    showControls = !_uiState.value.showControls
+                )
             }
 
             override fun onSettingsRequested() {
@@ -324,20 +345,17 @@ class SpotlightService : LifecycleService(), ViewModelStoreOwner {
     }
 
     private fun handleAddNewSpotlightOpening() {
-        val currentState = spotlightViewModel?.uiState?.value
-        if (currentState == null) {
-            Log.e(TAG, "ViewModel not initialized")
-            return
-        }
-
-        if (currentState.openings.size >= MAX_OPENINGS_PER_OVERLAY) {
+        if (_uiState.value.openings.size >= MAX_OPENINGS_PER_OVERLAY) {
             Log.w(TAG, "Maximum openings reached")
-            // Could show a toast or notification here
             return
         }
 
         val displayMetrics = resources.displayMetrics
-        spotlightViewModel?.addOpening(displayMetrics.widthPixels, displayMetrics.heightPixels)
+        lifecycleScope.launch {
+            instanceId?.let { id ->
+                repository.addOpening(id, displayMetrics.widthPixels, displayMetrics.heightPixels)
+            }
+        }
     }
 
     private fun openSettingsActivity() {
@@ -347,6 +365,26 @@ class SpotlightService : LifecycleService(), ViewModelStoreOwner {
             putExtra(KEY_INSTANCE_ID, instanceId)
         }
         startActivity(intent)
+    }
+
+    private fun handleServiceRecovery() {
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val activeInstances = repository.getActiveInstances()
+                for (instance in activeInstances) {
+                    if (!instanceManager.getActiveInstanceIds(InstanceManager.SPOTLIGHT)
+                            .contains(instance.instanceId)) {
+                        Log.d(TAG, "Re-registering orphaned instance ${instance.instanceId}")
+                        instanceManager.registerExistingInstance(
+                            InstanceManager.SPOTLIGHT,
+                            instance.instanceId
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error in service recovery", e)
+            }
+        }
     }
 
     private fun updateActiveInstanceCount() {
@@ -395,10 +433,9 @@ class SpotlightService : LifecycleService(), ViewModelStoreOwner {
     private fun stopService() {
         Log.d(TAG, "Stopping service")
 
-        // Cancel state observation
         stateObserverJob?.cancel()
+        openingsObserverJob?.cancel()
 
-        // Remove overlay view
         spotlightOverlayView?.let { view ->
             if (view.isAttachedToWindow) {
                 try {
@@ -410,31 +447,25 @@ class SpotlightService : LifecycleService(), ViewModelStoreOwner {
         }
         spotlightOverlayView = null
 
-        // Release instance ID
-        instanceId?.let {
-            instanceManager.releaseInstanceId(InstanceManager.SPOTLIGHT, it)
-            spotlightViewModel?.deactivateInstance()
+        instanceId?.let { id ->
+            instanceManager.releaseInstanceId(InstanceManager.SPOTLIGHT, id)
+            lifecycleScope.launch {
+                repository.deactivateInstance(id)
+            }
         }
 
-        // Update preferences
         updateActiveInstanceCount()
 
-        // Stop foreground
         if (isForeground) {
             stopForeground(STOP_FOREGROUND_REMOVE)
             isForeground = false
         }
 
-        // Clear ViewModelStore
-        _viewModelStore.clear()
-
-        // Stop self
         stopSelf()
     }
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         Log.d(TAG, "onTaskRemoved - instance will be preserved")
-        // State is automatically saved via Room, no action needed
         super.onTaskRemoved(rootIntent)
     }
 
