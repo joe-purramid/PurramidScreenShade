@@ -22,6 +22,10 @@
   - Add an "initialize()" method to set the instance ID after creation
   - Remove the HiltViewModelFactory usage
 
+- **Reviewed**: 20 August 2025
+- **Architecture**: Inactive Iconography
+- **Key Decisions**:
+  - To demonstrate an inactive button, add alpha = 0.5f for disabled state
   
   
   

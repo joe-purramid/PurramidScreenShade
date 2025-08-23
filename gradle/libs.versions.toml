@@ -13,6 +13,7 @@ coroutines = "1.10.2"
 espressoCore = "3.6.1"
 filament = "1.45.0"
 flexbox = "3.0.0"
+glide = "4.16.0"
 gson = "2.13.0"
 hilt = "2.56.2"
 jts = "1.20.0"
@@ -41,6 +42,10 @@ colorpicker = { group = "com.github.dhaval2404", name = "colorpicker", version.r
 constraintlayout = { module = "androidx.constraintlayout:constraintlayout", version.ref = "constraintlayout" }
 flexbox = { group = "com.google.android.flexbox", name = "flexbox", version.ref = "flexbox" }
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
+
+# Image Loading
+glide = { group = "com.github.bumptech.glide", name = "glide", version.ref = "glide" }
+glide-compiler = { group = "com.github.bumptech.glide", name = "compiler", version.ref = "glide" }
 
 # Lifecycle
 androidx-lifecycle-livedata-ktx = { group = "androidx.lifecycle", name = "lifecycle-livedata-ktx", version.ref = "lifecycle" }

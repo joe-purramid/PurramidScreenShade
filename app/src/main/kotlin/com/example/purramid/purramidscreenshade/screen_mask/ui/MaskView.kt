@@ -64,6 +64,8 @@ class MaskView @JvmOverloads constructor(
             gravity = Gravity.TOP or Gravity.START
         }
     }
+    private val activeButtonColor = Color.parseColor("#1976D2")
+
     private val bottomRightResizeHandle: ImageView = ImageView(context).apply {
         setImageDrawable(ContextCompat.getDrawable(context, R.drawable.ic_resize_right_handle))
         val handleSize = context.dpToPx(48)
@@ -94,7 +96,7 @@ class MaskView @JvmOverloads constructor(
         setOnClickListener {
             if (!currentState.isLocked || currentState.isLockedByLockAll) {
                 // Apply active state color
-                setColorFilter("#808080".toColorInt(), PorterDuff.Mode.SRC_IN)
+                setColorFilter(activeButtonColor, PorterDuff.Mode.SRC_IN)
                 interactionListener?.onLockToggled(instanceId)
 
                 // Reset color after a delay
@@ -116,7 +118,7 @@ class MaskView @JvmOverloads constructor(
         }
         setOnClickListener {
             // Apply active state color
-            setColorFilter("#808080".toColorInt(), PorterDuff.Mode.SRC_IN)
+            setColorFilter("activeButtonColor, PorterDuff.Mode.SRC_IN)
             interactionListener?.onLockAllToggled(instanceId)
 
             // Reset color after a delay
@@ -184,7 +186,7 @@ class MaskView @JvmOverloads constructor(
         settingsButton.setOnClickListener {
             if (!currentState.isLocked) {
                 // Apply active state color
-                settingsButton.setColorFilter("#808080".toColorInt(), PorterDuff.Mode.SRC_IN)
+                settingsButton.setColorFilter(activeButtonColor, PorterDuff.Mode.SRC_IN)
                 interactionListener?.onSettingsRequested(instanceId)
 
                 // Reset color after a delay (will be reset anyway when activity closes)
@@ -229,7 +231,7 @@ class MaskView @JvmOverloads constructor(
             setOnClickListener {
                 if (!currentState.isLocked) {
                     // Apply active state color
-                    closeButton.setColorFilter("#808080".toColorInt(), PorterDuff.Mode.SRC_IN)
+                    closeButton.setColorFilter(activeButtonColor, PorterDuff.Mode.SRC_IN)
                     interactionListener?.onCloseRequested(instanceId)
                     // Note: Color will be reset when view is removed
                 } else {
@@ -365,13 +367,13 @@ class MaskView @JvmOverloads constructor(
                     when (currentResizeDirection) {
                         ResizeDirection.TOP_LEFT -> {
                             topLeftResizeHandle.setColorFilter(
-                                "#808080".toColorInt(),
+                                activeButtonColor,
                                 PorterDuff.Mode.SRC_IN
                             )
                         }
                         ResizeDirection.BOTTOM_RIGHT -> {
                             bottomRightResizeHandle.setColorFilter(
-                                "#808080".toColorInt(),
+                                activeButtonColor,
                                 PorterDuff.Mode.SRC_IN
                             )
                         }

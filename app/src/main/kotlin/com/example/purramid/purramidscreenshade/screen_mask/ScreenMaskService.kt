@@ -80,8 +80,8 @@ class ScreenMaskService : LifecycleService() {
     }
 
     private fun updateActiveInstanceCountInPrefs() {
-        servicePrefs.edit { putInt(KEY_ACTIVE_COUNT, activeMaskViewModels.size) }
-        Log.d(TAG, "Updated active ScreenMask count: ${activeMaskViewModels.size}")
+        servicePrefs.edit { putInt(KEY_ACTIVE_COUNT, activeMaskViews.size) }
+        Log.d(TAG, "Updated active ScreenMask count: ${activeMaskViews.size}")
     }
 
     private fun loadAndRestoreMaskStates() {
@@ -276,6 +276,19 @@ class ScreenMaskService : LifecycleService() {
         }
     }
 
+    private fun observeInstanceState(instanceId: Int) {
+        stateObserverJobs[instanceId]?.cancel()
+        stateObserverJobs[instanceId] = lifecycleScope.launch {
+            repository.getMaskStateFlow(instanceId).collectLatest { state ->
+                Log.d(TAG, "State update for Mask ID $instanceId")
+                withContext(Dispatchers.Main) {
+                    addOrUpdateMaskView(instanceId, state)
+                }
+            }
+        }
+        Log.d(TAG, "Started observing state for Mask ID $instanceId")
+    }
+
     private fun observeViewModelState(instanceId: Int, viewModel: ScreenMaskViewModel) {
         stateObserverJobs[instanceId]?.cancel()
         stateObserverJobs[instanceId] = lifecycleScope.launch {
@@ -372,71 +385,71 @@ class ScreenMaskService : LifecycleService() {
 
             updateActiveInstanceCountInPrefs()
 
-            if (activeMaskViewModels.isEmpty()) {
+            if (activeMaskViews.isEmpty()) {
                 Log.d(TAG, "No active masks left, stopping service.")
                 stopService()
             }
         }
     }
 
-    private fun createMaskInteractionListener(
+    private fun createMaskInteractionListener(instanceId: Int): MaskView.InteractionListener {
         return object : MaskView.InteractionListener {
-        override fun onMaskMoved(instanceId: Int, x: Int, y: Int) {
-            lifecycleScope.launch {
-                repository.updatePosition(instanceId, x, y)
+            override fun onMaskMoved(instanceId: Int, x: Int, y: Int) {
+                lifecycleScope.launch {
+                    repository.updatePosition(instanceId, x, y)
+                }
             }
-        }
 
-        override fun onMaskResized(instanceId: Int, width: Int, height: Int) {
-            lifecycleScope.launch {
-                repository.updateSize(instanceId, width, height)
+            override fun onMaskResized(instanceId: Int, width: Int, height: Int) {
+                lifecycleScope.launch {
+                    repository.updateSize(instanceId, width, height)
+                }
             }
-        }
 
-        override fun onSettingsRequested(instanceId: Int) {
-            this@ScreenMaskService.onSettingsRequested(instanceId)
-        }
-
-        override fun onLockToggled(instanceId: Int) {
-            lifecycleScope.launch {
-                repository.toggleLock(instanceId)
+            override fun onSettingsRequested(instanceId: Int) {
+                this@ScreenMaskService.onSettingsRequested(instanceId)
             }
-        }
 
-        override fun onLockAllToggled(instanceId: Int) {
-            handleLockAllToggle()
-        }
-
-        override fun onCloseRequested(instanceId: Int) {
-            removeMaskInstance(instanceId)
-        }
-
-        override fun onBillboardTapped(instanceId: Int) {
-            imageChooserTargetInstanceId = instanceId
-            val activityIntent = Intent(this@ScreenMaskService, ScreenMaskActivity::class.java).apply {
-                action = ScreenMaskActivity.ACTION_LAUNCH_IMAGE_CHOOSER_FROM_SERVICE
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            override fun onLockToggled(instanceId: Int) {
+                lifecycleScope.launch {
+                    repository.toggleLock(instanceId)
+                }
             }
-            try {
-                startActivity(activityIntent)
-            } catch (e: Exception) {
-                Log.e(TAG, "Could not start ScreenMaskActivity for image chooser", e)
-                activeMaskViews[instanceId]?.showMessage(getString(R.string.cannot_open_image_picker))
-                imageChooserTargetInstanceId = null
+
+            override fun onLockAllToggled(instanceId: Int) {
+                handleLockAllToggle()
             }
-        }
 
-        override fun onColorChangeRequested(instanceId: Int) {
-            Log.d(TAG, "Color change requested for $instanceId (currently no-op for opaque masks)")
-        }
+            override fun onCloseRequested(instanceId: Int) {
+                removeMaskInstance(instanceId)
+            }
 
-        override fun onControlsToggled(instanceId: Int) {
-            lifecycleScope.launch {
-                repository.toggleControlsVisibility(instanceId)
+            override fun onBillboardTapped(instanceId: Int) {
+                imageChooserTargetInstanceId = instanceId
+                val activityIntent = Intent(this@ScreenMaskService, ScreenMaskActivity::class.java).apply {
+                    action = ScreenMaskActivity.ACTION_LAUNCH_IMAGE_CHOOSER_FROM_SERVICE
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                try {
+                    startActivity(activityIntent)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Could not start ScreenMaskActivity for image chooser", e)
+                    activeMaskViews[instanceId]?.showMessage(getString(R.string.cannot_open_image_picker))
+                    imageChooserTargetInstanceId = null
+                }
+            }
+
+            override fun onColorChangeRequested(instanceId: Int) {
+                Log.d(TAG, "Color change requested for $instanceId (currently no-op for opaque masks)")
+            }
+
+            override fun onControlsToggled(instanceId: Int) {
+                lifecycleScope.launch {
+                    repository.toggleControlsVisibility(instanceId)
+                }
             }
         }
     }
-}
 
     private fun createDefaultLayoutParams(initialState: ScreenMaskState): WindowManager.LayoutParams {
         val screenWidth: Int

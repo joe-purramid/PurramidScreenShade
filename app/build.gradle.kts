@@ -71,6 +71,10 @@ dependencies {
     implementation(libs.androidx.window)
     implementation(libs.colorpicker)
 
+    // Image loading
+    implementation(libs.glide)
+    ksp(libs.glide.compiler)
+
     // Lifecycle
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
