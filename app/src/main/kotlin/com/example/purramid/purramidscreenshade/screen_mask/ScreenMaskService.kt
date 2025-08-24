@@ -526,7 +526,7 @@ class ScreenMaskService : LifecycleService() {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Screen Mask Active") // More specific title
             .setContentText("Tap to manage screen masks.") // More specific text
-            .setSmallIcon(R.drawable.ic_mask)
+            .setSmallIcon(R.drawable.ic_mask_notification)
             .setContentIntent(pendingIntent)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .build()

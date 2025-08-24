@@ -40,6 +40,15 @@ class MaskView @JvmOverloads constructor(
     // Calculate the equivalent minimum dimension in pixels, using lazy initialization
     private val minDimensionPx: Int by lazy { context.dpToPx(minDimensionDp) }
 
+    private val handleActiveColor by lazy {
+        val stateList = ContextCompat.getColorStateList(context, R.color.button_tint_state_list)
+        // Get the color for activated state
+        stateList?.getColorForState(
+            intArrayOf(android.R.attr.state_pressed),
+            stateList.defaultColor
+        )
+    }
+
     interface InteractionListener {
         fun onMaskMoved(instanceId: Int, x: Int, y: Int)
         fun onMaskResized(instanceId: Int, width: Int, height: Int)
@@ -386,13 +395,13 @@ class MaskView @JvmOverloads constructor(
                     when (currentResizeDirection) {
                         ResizeDirection.TOP_LEFT -> {
                             topLeftResizeHandle.setColorFilter(
-                                activeButtonColor,
+                                handleActiveColor,
                                 PorterDuff.Mode.SRC_IN
                             )
                         }
                         ResizeDirection.BOTTOM_RIGHT -> {
                             bottomRightResizeHandle.setColorFilter(
-                                activeButtonColor,
+                                handleActiveColor,
                                 PorterDuff.Mode.SRC_IN
                             )
                         }
