@@ -20,13 +20,17 @@ import android.widget.ImageView
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import com.bumptech.glide.Glide
+import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.google.android.material.snackbar.Snackbar
 import com.example.purramid.purramidscreenshade.R
 import com.example.purramid.purramidscreenshade.screen_mask.ScreenMaskState
+import com.example.purramid.purramidscreenshade.util.cleanup
 import com.example.purramid.purramidscreenshade.util.dpToPx
 import kotlin.math.abs
 import kotlin.math.max
 import androidx.core.graphics.toColorInt
+import java.lang.ref.WeakReference
+import androidx.core.net.toUri
 
 class MaskView @JvmOverloads constructor(
     context: Context,
@@ -34,6 +38,18 @@ class MaskView @JvmOverloads constructor(
     defStyleAttr: Int = 0,
     private val instanceId: Int // Each MaskView needs to know its ID
 ) : FrameLayout(context, attrs, defStyleAttr) {
+
+    // Weak reference for listener to prevent memory leaks
+    private var interactionListenerRef: WeakReference<InteractionListener>? = null
+
+    var interactionListener: InteractionListener?
+        get() = interactionListenerRef?.get()
+        set(value) {
+            interactionListenerRef = value?.let { WeakReference(it) }
+        }
+
+    // Cleanup flag
+    private var isCleanedUp = false
 
     // Define the desired minimum dimension in dp
     private val minDimensionDp = 50
@@ -61,7 +77,6 @@ class MaskView @JvmOverloads constructor(
         fun onControlsToggled(instanceId: Int) // To toggle controls visibility
     }
 
-    var interactionListener: InteractionListener? = null
     private var currentState: ScreenMaskState
 
     // Control buttons
@@ -82,8 +97,6 @@ class MaskView @JvmOverloads constructor(
             ?: Color.parseColor("#1976D2")
     }
 
-    // Then use it in the button click handlers:
-    setColorFilter(activeButtonColor, PorterDuff.Mode.SRC_IN)
     private val bottomRightResizeHandle: ImageView = ImageView(context).apply {
         setImageDrawable(ContextCompat.getDrawable(context, R.drawable.ic_resize_right_handle))
         val handleSize = context.dpToPx(48)
@@ -731,12 +744,59 @@ class MaskView @JvmOverloads constructor(
     }
 
     override fun onDetachedFromWindow() {
+        cleanup()
         super.onDetachedFromWindow()
+    }
 
-        // Cancel any ongoing animations
+    private fun cleanup() {
+        if (isCleanedUp) return
+        isCleanedUp = true
+
+        // Cancel animations
         borderFadeAnimator?.cancel()
+        borderFadeAnimator?.removeAllListeners()
+        borderFadeAnimator = null
 
         // Clear Glide resources
         Glide.with(context).clear(billboardImageView)
+
+        // Clear listeners
+        interactionListenerRef?.clear()
+        interactionListenerRef = null
+
+        // Remove all click listeners using the extension
+        closeButton.cleanup()
+        settingsButton.cleanup()
+        lockButton.cleanup()
+        lockAllButton.cleanup()
+        billboardImageView.cleanup()
+
+        // Clear touch listener
+        setOnTouchListener(null)
+
+        // Clear any pending callbacks
+        removeCallbacks(null)
+    }
+
+    // Update Glide usage to handle lifecycle better
+    private fun loadBillboardImage(uriString: String) {
+        if (isCleanedUp) return
+
+        try {
+            val glideRequest = Glide.with(context.applicationContext) // Use app context
+                .load(uriString.toUri())
+                .fitCenter()
+                .diskCacheStrategy(DiskCacheStrategy.RESOURCE)
+                .error(R.drawable.ic_add_image) // Fallback image
+
+            // Check if view is still attached before loading
+            if (isAttachedToWindow) {
+                glideRequest.into(billboardImageView)
+            }
+        } catch (e: Exception) {
+            Log.e("MaskView", "Error loading billboard image", e)
+            billboardImageView.visibility = GONE
+            maskStampImageView.visibility = VISIBLE
+        }
     }
 }

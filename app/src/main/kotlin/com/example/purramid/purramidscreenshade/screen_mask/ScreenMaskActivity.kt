@@ -172,28 +172,81 @@ class ScreenMaskActivity : AppCompatActivity() {
             try {
                 val bitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                     val source = ImageDecoder.createSource(contentResolver, uri)
-                    ImageDecoder.decodeBitmap(source)
+                    ImageDecoder.decodeBitmap(source) { decoder, _, _ ->
+                        decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
+                        decoder.isMutableRequired = true
+                    }
                 } else {
                     @Suppress("DEPRECATION")
                     MediaStore.Images.Media.getBitmap(contentResolver, uri)
                 }
 
-                // Calculate compression quality to get close to 3MB
-                var quality = 90
+                // Calculate optimal dimensions while maintaining aspect ratio
+                val maxDimension = 1920 // Max width or height
+                val ratio = bitmap.width.toFloat() / bitmap.height.toFloat()
+
+                val (newWidth, newHeight) = if (bitmap.width > bitmap.height) {
+                    if (bitmap.width > maxDimension) {
+                        maxDimension to (maxDimension / ratio).toInt()
+                    } else {
+                        bitmap.width to bitmap.height
+                    }
+                } else {
+                    if (bitmap.height > maxDimension) {
+                        (maxDimension * ratio).toInt() to maxDimension
+                    } else {
+                        bitmap.width to bitmap.height
+                    }
+                }
+
+                // Resize bitmap if needed
+                val resizedBitmap = if (newWidth != bitmap.width || newHeight != bitmap.height) {
+                    Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true).also {
+                        if (it != bitmap) bitmap.recycle()
+                    }
+                } else {
+                    bitmap
+                }
+
+                // Progressive compression with format selection
                 var outputStream: ByteArrayOutputStream
                 var compressed: ByteArray
+                var format = Bitmap.CompressFormat.JPEG
+                var quality = 95
+                val targetSize = 3 * 1024 * 1024 // 3MB
 
                 do {
                     outputStream = ByteArrayOutputStream()
-                    bitmap.compress(Bitmap.CompressFormat.JPEG, quality, outputStream)
+                    resizedBitmap.compress(format, quality, outputStream)
                     compressed = outputStream.toByteArray()
-                    quality -= 10
-                } while (compressed.size > 3 * 1024 * 1024 && quality > 10)
+
+                    if (compressed.size > targetSize && quality > 10) {
+                        quality -= 5
+                    } else if (compressed.size > targetSize && format == Bitmap.CompressFormat.JPEG) {
+                        // Try WebP if JPEG isn't sufficient
+                        format = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                            Bitmap.CompressFormat.WEBP_LOSSY
+                        } else {
+                            @Suppress("DEPRECATION")
+                            Bitmap.CompressFormat.WEBP
+                        }
+                        quality = 90
+                    }
+                } while (compressed.size > targetSize && quality > 10)
+
+                resizedBitmap.recycle()
 
                 // Save compressed image to cache
-                val fileName = "compressed_${System.currentTimeMillis()}.jpg"
+                val extension = when(format) {
+                    Bitmap.CompressFormat.WEBP, Bitmap.CompressFormat.WEBP_LOSSY, Bitmap.CompressFormat.WEBP_LOSSLESS -> "webp"
+                    else -> "jpg"
+                }
+                val fileName = "compressed_${System.currentTimeMillis()}.$extension"
                 val file = File(cacheDir, fileName)
                 file.writeBytes(compressed)
+
+                // Clear old cached images to prevent storage buildup
+                clearOldCachedImages()
 
                 // Return URI of compressed file
                 FileProvider.getUriForFile(this@ScreenMaskActivity, "${packageName}.fileprovider", file)
@@ -202,6 +255,22 @@ class ScreenMaskActivity : AppCompatActivity() {
                 Log.e(TAG, "Compression error", e)
                 null
             }
+        }
+    }
+
+    private fun clearOldCachedImages() {
+        try {
+            val cacheDir = cacheDir
+            val maxAge = 24 * 60 * 60 * 1000L // 24 hours
+            val now = System.currentTimeMillis()
+
+            cacheDir.listFiles()?.forEach { file ->
+                if (file.name.startsWith("compressed_") && (now - file.lastModified() > maxAge)) {
+                    file.delete()
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to clear old cached images", e)
         }
     }
 

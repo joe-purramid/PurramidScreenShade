@@ -1,18 +1,20 @@
 // ScreenServiceMask.kt
 package com.example.purramid.purramidscreenshade.screen_mask
 
+import android.app.ActivityOptions
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.animation.ObjectAnimator
 import android.app.PendingIntent
 import android.content.Intent
 import android.content.SharedPreferences
 import android.graphics.PixelFormat
 import android.os.Build
-import android.os.Bundle
 import android.os.IBinder
 import android.util.DisplayMetrics
 import android.util.Log
+import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
@@ -24,15 +26,19 @@ import com.example.purramid.purramidscreenshade.R
 import com.example.purramid.purramidscreenshade.instance.InstanceManager
 import com.example.purramid.purramidscreenshade.screen_mask.repository.ScreenMaskRepository
 import com.example.purramid.purramidscreenshade.screen_mask.ui.MaskView
+import com.example.purramid.purramidscreenshade.util.cleanup
 import com.example.purramid.purramidscreenshade.util.dpToPx
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
+import java.util.concurrent.ConcurrentHashMap
 
 // Actions for ScreenMaskService
 const val ACTION_START_SCREEN_MASK = "com.example.purramid.screen_mask.ACTION_START"
@@ -49,6 +55,10 @@ const val EXTRA_IMAGE_URI = "com.example.purramid.screen_mask.EXTRA_IMAGE_URI"
 
 @AndroidEntryPoint
 class ScreenMaskService : LifecycleService() {
+
+    // Job for managing coroutines
+    private val serviceJob = SupervisorJob()
+    private val serviceScope = CoroutineScope(Dispatchers.Main + serviceJob)
 
     @Inject lateinit var windowManager: WindowManager
     @Inject lateinit var instanceManager: InstanceManager
@@ -223,8 +233,34 @@ class ScreenMaskService : LifecycleService() {
             putExtra(EXTRA_MASK_INSTANCE_ID, id)
             putExtra("EXTRA_SETTINGS_BUTTON_SCREEN_LOCATION", getSettingsButtonLocation(id))
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            // Add animation flags for smooth transition
+            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
         }
-        startActivity(intent)
+
+        // Create activity options for custom animation
+        val options = ActivityOptions.makeCustomAnimation(
+            this,
+            android.R.anim.fade_in,
+            android.R.anim.fade_out
+        )
+
+        startActivity(intent, options.toBundle())
+    }
+
+    private fun highlightMaskAnimated(instanceId: Int?, highlight: Boolean) {
+        lifecycleScope.launch(Dispatchers.Main) {
+            activeMaskViews[instanceId]?.let { maskView ->
+                if (highlight) {
+                    // Animate highlight appearance
+                    val fadeIn = ObjectAnimator.ofFloat(maskView, "alpha", 0.7f, 1.0f).apply {
+                        duration = 200
+                        interpolator = AccelerateDecelerateInterpolator()
+                    }
+                    fadeIn.start()
+                }
+                maskView.setHighlighted(highlight)
+            }
+        }
     }
 
     private fun getSettingsButtonLocation(instanceId: Int): IntArray {
@@ -355,22 +391,12 @@ class ScreenMaskService : LifecycleService() {
 
             instanceManager.releaseInstanceId(InstanceManager.SCREEN_MASK, instanceId)
 
-            val maskView = activeMaskViews.remove(instanceId)
-            maskLayoutParams.remove(instanceId)
             stateObserverJobs[instanceId]?.cancel()
             stateObserverJobs.remove(instanceId)
 
-            maskView?.let {
-                if (it.isAttachedToWindow) {
-                    try {
-                        windowManager.removeView(it)
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Error removing MaskView ID $instanceId", e)
-                    }
-                }
-            }
+            removeViewSafely(instanceId)
 
-            lifecycleScope.launch {
+            lifecycleScope.launch(Dispatchers.IO) {
                 repository.deleteState(instanceId)
             }
 
@@ -546,26 +572,45 @@ class ScreenMaskService : LifecycleService() {
     override fun onDestroy() {
         Log.d(TAG, "onDestroy")
 
-        // Cancel all coroutines first
+        // Cancel service scope first
+        serviceScope.cancel()
+        serviceJob.cancel()
+
+        // Cancel all coroutines
         stateObserverJobs.values.forEach { it.cancel() }
         stateObserverJobs.clear()
 
-        // Remove all views
+        // Cancel all state observer jobs
+        stateObserverJobs.values.forEach { it.cancel() }
+        stateObserverJobs.clear()
+
+        // Remove all views safely
         activeMaskViews.keys.toList().forEach { id ->
-            val view = activeMaskViews.remove(id)
-            maskLayoutParams.remove(id)
-            view?.let {
-                if (it.isAttachedToWindow) {
-                    try {
-                        windowManager.removeView(it)
-                    } catch (e:Exception) {
-                        Log.e(TAG, "Error removing view on destroy for $id", e)
-                    }
-                }
-            }
+            removeViewSafely(id)
         }
 
-         super.onDestroy()
+        // Clear collections
+        activeMaskViews.clear()
+        maskLayoutParams.clear()
+
+        super.onDestroy()
+    }
+
+    private fun removeViewSafely(id: Int) {
+        try {
+            val view = activeMaskViews.remove(id)
+            maskLayoutParams.remove(id)
+
+            view?.let {
+                if (it.isAttachedToWindow) {
+                    windowManager.removeView(it)
+                }
+                // Trigger cleanup in the view
+                it.cleanup()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error removing view safely for $id", e)
+        }
     }
 
     override fun onBind(intent: Intent): IBinder? {

@@ -6,6 +6,7 @@ import android.content.Context
 import android.graphics.Point
 import android.util.TypedValue
 import android.view.View
+import android.view.ViewGroup
 
 fun Context.dpToPx(dp: Int): Int {
     return TypedValue.applyDimension(
@@ -42,4 +43,26 @@ fun isPointInView(view: View, point: Point): Boolean {
             point.x <= location[0] + view.width &&
             point.y >= location[1] &&
             point.y <= location[1] + view.height
+}
+
+fun View.cleanup() {
+    // Clear click listeners
+    setOnClickListener(null)
+    setOnLongClickListener(null)
+    setOnTouchListener(null)
+
+    // Clear animations
+    clearAnimation()
+    animate().cancel()
+
+    // Clear background
+    background = null
+
+    // Recursively cleanup child views
+    if (this is ViewGroup) {
+        for (i in 0 until childCount) {
+            getChildAt(i)?.cleanup()
+        }
+        removeAllViews()
+    }
 }
