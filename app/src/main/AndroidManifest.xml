@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.example.purramid.thepurramid">
+    package="com.example.purramid.purramidscreenshade">
 
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
@@ -13,7 +13,7 @@
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
 
     <application
-        android:name=".PurramidApplication"
+        android:name=".PurramidScreenShadeApplication"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -21,7 +21,7 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.ThePurramid">
+        android:theme="@style/Theme.PurramidScreenShade">
 
         <activity android:name=".MainActivity"
             android:exported="true">
@@ -36,7 +36,7 @@
             android:exported="true"
             android:label="@string/screen_mask_title"
             android:parentActivityName=".MainActivity"
-            android:theme="@style/Theme.ThePurramid"
+            android:theme="@style/Theme.PurramidScreenShade"
             android:resizeableActivity="true"
             android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
             android:windowLayoutInDisplayCutoutMode="shortEdges">
@@ -63,7 +63,7 @@
             android:exported="false"
             android:label="@string/spotlight_title"
             android:parentActivityName=".MainActivity"
-            android:theme="@style/Theme.ThePurramid"
+            android:theme="@style/Theme.PurramidScreenShade"
             android:resizeableActivity="true"
             android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
             android:windowLayoutInDisplayCutoutMode="shortEdges">

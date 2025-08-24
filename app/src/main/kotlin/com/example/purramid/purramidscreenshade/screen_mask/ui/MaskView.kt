@@ -64,8 +64,17 @@ class MaskView @JvmOverloads constructor(
             gravity = Gravity.TOP or Gravity.START
         }
     }
-    private val activeButtonColor = Color.parseColor("#1976D2")
 
+    // Get the active color from the state list for activated state
+    private val activeButtonColor by lazy {
+        val stateList = ContextCompat.getColorStateList(context, R.color.button_tint_state_list)
+        // Get the color for activated state
+        stateList?.getColorForState(intArrayOf(android.R.attr.state_activated), Color.GRAY)
+            ?: Color.parseColor("#1976D2")
+    }
+
+    // Then use it in the button click handlers:
+    setColorFilter(activeButtonColor, PorterDuff.Mode.SRC_IN)
     private val bottomRightResizeHandle: ImageView = ImageView(context).apply {
         setImageDrawable(ContextCompat.getDrawable(context, R.drawable.ic_resize_right_handle))
         val handleSize = context.dpToPx(48)
@@ -286,6 +295,10 @@ class MaskView @JvmOverloads constructor(
             // No billboard image - hide billboard, show mask stamp
             billboardImageView.visibility = GONE
             maskStampImageView.visibility = VISIBLE
+            // Ensure mask stamp is properly sized when it becomes visible
+            post {
+                updateMaskStampSize()
+            }
             // Clear any previously loaded image
             Glide.with(context).clear(billboardImageView)
         }
@@ -313,6 +326,12 @@ class MaskView @JvmOverloads constructor(
         settingsButton.visibility = controlsVisibility
         lockButton.visibility = controlsVisibility
         lockAllButton.visibility = controlsVisibility
+
+        // Update mask stamp size when state changes (for programmatic size changes)
+        // This ensures the stamp is properly sized if the mask size changed in the state
+        post {
+            updateMaskStampSize()
+        }
 
         invalidate() // Redraw view
         // Show/hide controls based on state
@@ -527,16 +546,16 @@ class MaskView @JvmOverloads constructor(
         newWidth = max(newWidth, minDimensionPx)
         newHeight = max(newHeight, minDimensionPx)
 
-        // To maintain position correctly during edge drags, adjust X/Y only if size changed
-        if (newWidth != currentState.width) currentState.x = newX
-        if (newHeight != currentState.height) currentState.y = newY
-        currentState.width = newWidth
-        currentState.height = newHeight
-
         // For visual feedback during resize:
         // Directly tell service to update WindowManager params
         interactionListener?.onMaskMoved(instanceId, currentState.x, currentState.y) // For position
         interactionListener?.onMaskResized(instanceId, currentState.width, currentState.height) // For size
+
+        // Update mask stamp size during resize for immediate visual feedback
+        // Add this at the very end:
+        post {
+            updateMaskStampSize()
+        }
     }
 
     private inner class ScaleListener : ScaleGestureDetector.SimpleOnScaleGestureListener() {
@@ -572,11 +591,13 @@ class MaskView @JvmOverloads constructor(
 
             // For visual feedback:
             interactionListener?.onMaskResized(instanceId, newWidth, newHeight)
-            // Update currentState temporarily for consistent feedback IF other interactions also update it.
-            // However, the final update will come from the ViewModel.
-            // Better: just pass newWidth/newHeight to listener.
-            // currentState.width = newWidth (visual only)
-            // currentState.height = newHeight (visual only)
+
+            // Update mask stamp size during resize for immediate visual feedback
+            // Add this at the very end:
+            post {
+                updateMaskStampSize()
+            }
+
             return true
         }
 
@@ -592,6 +613,14 @@ class MaskView @JvmOverloads constructor(
             }
             isResizing = false
             scaleFactor = 1.0f
+        }
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        // Ensure mask stamp is properly sized when view is first attached
+        post {
+            updateMaskStampSize()
         }
     }
 

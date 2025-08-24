@@ -3,13 +3,13 @@ package com.example.purramid.purramidscreenshade.screen_mask
 
 data class ScreenMaskState(
     val instanceId: Int = 0,
-    var x: Int = 0,
-    var y: Int = 0,
-    var width: Int = -1, // -1 for default/match_parent initially
-    var height: Int = -1, // -1 for default/match_parent initially
-    var isLocked: Boolean = false,
-    var isLockedByLockAll: Boolean = false,
-    var billboardImageUri: String? = null, // Store URI as String
-    var isBillboardVisible: Boolean = false,
-    var isControlsVisible: Boolean = true // To manage visibility of control buttons on the mask
+    val x: Int = 0,
+    val y: Int = 0,
+    val width: Int = -1, // -1 for default/match_parent initially
+    val height: Int = -1, // -1 for default/match_parent initially
+    val isLocked: Boolean = false,
+    val isLockedByLockAll: Boolean = false,
+    val billboardImageUri: String? = null, // Store URI as String
+    val isBillboardVisible: Boolean = false,
+    val isControlsVisible: Boolean = true // To manage visibility of control buttons on the mask
 )

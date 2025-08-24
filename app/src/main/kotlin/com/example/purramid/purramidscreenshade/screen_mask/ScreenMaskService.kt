@@ -86,6 +86,10 @@ class ScreenMaskService : LifecycleService() {
 
     private fun loadAndRestoreMaskStates() {
         lifecycleScope.launch(Dispatchers.IO) {
+            // Initialize repository first
+            repository.initializeRepository()
+
+            // Get all persisted states
             val persistedStates = repository.getAllStates()
             if (persistedStates.isNotEmpty()) {
                 Log.d(TAG, "Found ${persistedStates.size} persisted screen mask states. Restoring...")
@@ -287,19 +291,6 @@ class ScreenMaskService : LifecycleService() {
             }
         }
         Log.d(TAG, "Started observing state for Mask ID $instanceId")
-    }
-
-    private fun observeViewModelState(instanceId: Int, viewModel: ScreenMaskViewModel) {
-        stateObserverJobs[instanceId]?.cancel()
-        stateObserverJobs[instanceId] = lifecycleScope.launch {
-            repository.getMaskStateFlow(instanceId).collectLatest { state ->
-                Log.d(TAG, "State update for Mask ID $instanceId")
-                withContext(Dispatchers.Main) {
-                    addOrUpdateMaskView(instanceId, state)
-                }
-            }
-        }
-        Log.d(TAG, "Started observing ViewModel for Mask ID $instanceId")
     }
 
     private fun addOrUpdateMaskView(instanceId: Int, state: ScreenMaskState) {

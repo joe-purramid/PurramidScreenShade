@@ -172,12 +172,15 @@ class ScreenMaskSettingsFragment : Fragment() {
 
     // Helper method to apply active color to Material Button
     private fun applyActiveColorToButton(button: MaterialButton) {
-        button.iconTint = ColorStateList.valueOf("#808080".toColorInt())
+        // Set the button to activated state to trigger the active color from the state list
+        button.isActivated = true
+        button.iconTint = ContextCompat.getColorStateList(requireContext(), R.color.button_tint_state_list)
     }
 
-    // Helper method to clear color filter from Material Button
+    // And to clear the color filter
     private fun clearButtonColorFilter(button: MaterialButton) {
-        button.iconTint = null
+        button.isActivated = false
+        button.iconTint = ContextCompat.getColorStateList(requireContext(), R.color.button_tint_state_list)
     }
 
     private fun updateAddAnotherButtonState() {
